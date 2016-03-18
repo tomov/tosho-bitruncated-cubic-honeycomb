@@ -17,9 +17,21 @@ def chunkate(l, n):
         yield l[i:i+size]
 
 
+def bestInRange(solution, neighbors, points, chunks, i, x_range, y_range, z_range):
+    for idx in chunks[i]:
+        point = points[idx]
+        bits = solution.throats[point]
+        for b in range(14):
+            adj = getAdj(point, b)
+            if not isIn(adj, x_range, y_range, z_range):
+                continue
+            new_cost = solution.costIfSet(point, b, 1 - bits[b])
+            if not neighbors[i] or new_cost < neighbors[i][0]:
+                neighbors[i] = (new_cost, point, b, 1 - bits[b])
+
 def greedy(target, x_range, y_range, z_range):
 
-    print '\n -------------------- Greedy! ---------------------------'
+    print '\n -------------------- Gradient descent! ---------------------------'
 
     throatsN = sum([i * target[i] for i in range(15)]) / 2 # approximate b/c of faces but still good
     maxThroatsN = getThroatsN(x_range, y_range, z_range)
@@ -30,26 +42,40 @@ def greedy(target, x_range, y_range, z_range):
 
     costs = []
 
-    threatsN = 8
+    threadsN = 8
 
     manager = Manager()
     idx = range(len(solution.throats))
     chunks = manager.list()
     for chunk in chunkate(idx, threadsN):
         chunks.append(chunk)
-
-    return None
+    points = solution.throats.keys()
 
     for it in range(100000):
         neighbors = manager.list([None] * threadsN)
+        procs = [Process(target=bestInRange, args=(solution, neighbors, points, chunks, i, x_range, y_range, z_range)) for i in range(threadsN)]
+        [p.start() for p in procs]
+        [p.join() for p in procs]
+
+        print 'neighbors = ', neighbors
+        best = None
+        for neighbor in neighbors:
+            if not best or neighbor[0] < best[0]:
+                best = neighbor
+
+        neighbor = None
         for point, bits in solution.throats.iteritems():
             for b in range(14):
                 adj = getAdj(point, b)
                 if not isIn(adj, x_range, y_range, z_range):
                     continue
-                new_cost = solution.costIfSet(point, b, 5 - bits[b])
+                new_cost = solution.costIfSet(point, b, 1 - bits[b])
                 if not neighbor or new_cost < neighbor[0]:
                     neighbor = (new_cost, point, b, 1 - bits[b])
+
+        print 'best =', best
+        print 'neighbor = ', neighbor
+        assert neighbor == best
 
         cost = neighbor[0]
         point = neighbor[1]
