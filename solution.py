@@ -1,6 +1,7 @@
 from __future__ import division
 import random
 import json
+import math
 
 # Total number of lattice points in range
 #
@@ -213,7 +214,7 @@ class Solution():
         pointIdx = dict()
         for point, bits in self.throats.iteritems():
             pointIdx[point] = len(coords)
-            coords.append(point)
+            coords.append([point[0], point[1], point[2]])
         for point, bits in self.throats.iteritems():
             for i in range(14):
                 if i < revAdjIdx[i]:
@@ -223,8 +224,8 @@ class Solution():
                     if bits[i]:
                         idxA = pointIdx[point]
                         idxB = pointIdx[adj]
-                        neigh.append((idxA, idxB, 0))
-        assert len(neigh) == sum(self.hist)
+                        neigh.append([idxA, idxB, 0])
+        assert len(neigh) == sum([i * self.hist[i] for i in range(15)]) / 2
         for point in coords: # my coords are * 2 and from 0
             point[0] = point[0] / 2 + 100
             point[1] = point[1] / 2 + 100
@@ -262,7 +263,7 @@ class Solution():
                 pointA = points[n[0] - 1]
                 pointB = points[n[1] - 1]
                 for i in range(14):
-                    adj = getAdj(point, i)
+                    adj = getAdj(pointA, i)
                     if adj == pointB:
                         assert i < revAdjIdx[i]
                         self.throats[pointA][i] = 1
