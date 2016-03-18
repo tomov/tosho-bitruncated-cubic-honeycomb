@@ -18,24 +18,27 @@ def greedy(target, x_range, y_range, z_range):
     prob = throatsN/maxThroatsN
 
     solution = Solution(target, x_range, y_range, z_range, randomize=True, prob=prob)
-    print 'fit = ' + str(solution.fit)
+    print 'cost = ' + str(solution.cost)
 
-    for it in range(1):
+    for it in range(1000):
         neighbors = []
         for point, bits in solution.throats.iteritems():
-            print 'for ', point
             for b in range(14):
                 adj = getAdj(point, b)
                 if not isIn(adj, x_range, y_range, z_range):
                     continue
-                new_fit = solution.fitIfSet(point, b, 1-bits[b], target)
+                new_cost = solution.costIfSet(point, b, 1 - bits[b], target)
+                neighbors.append((new_cost, point, b, 1 - bits[b]))
 
-                neighbor = copy.deepcopy(solution)
-                neighbor.set(point, b, 1 - bits[b])
-                neighbor.recalc(target)
-              
-                print '    neighbor ', b, ' = ', neighbor.fit, ' vs. ', new_fit
-                assert neighbor.fit == new_fit
-
-                #neighbors.append(neighbor)
+        neighbors.sort()
+        cost = neighbors[0][0]
+        point = neighbors[0][1]
+        b = neighbors[0][2]
+        value = neighbors[0][3]
+        solution.set(point, b, value)
+        solution.recalc(target)
+        assert solution.cost == cost
+        print 'cost = ', solution.cost, ' cost = ', solution.cost
+        print 'target = ', target
+        print 'solution = ', solution.hist
 

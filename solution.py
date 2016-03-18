@@ -187,12 +187,12 @@ class Solution():
         self.throats[point][b] = value
         self.throats[adj][revAdjIdx[b]] = value
 
-    def fitIfSet(self, point, b, value, target):
+    def costIfSet(self, point, b, value, target):
         assert isIn(point, self.x_range, self.y_range, self.z_range)
         adj = getAdj(point, b)
         assert isIn(adj, self.x_range, self.y_range, self.z_range)
         if self.throats[point][b] == value:
-            return self.fit
+            return self.cost
 
         deltas = dict()
         for p in [point, adj]:
@@ -209,11 +209,10 @@ class Solution():
                 deltas[new_bucket] = 1
 
         new_cost = self.cost
-        print deltas
         for bucket, delta in deltas.iteritems():
             new_cost -= (self.hist[bucket] - target[bucket]) ** 2
             new_cost += (self.hist[bucket] + delta - target[bucket]) ** 2
-        return 1 / new_cost
+        return new_cost
 
     def sanity(self, target):
         assert len(self.throats) == getN(self.x_range, self.y_range, self.z_range)
