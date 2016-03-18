@@ -206,6 +206,70 @@ class Solution():
         for point, bits in self.throats.iteritems():
             print point, ' -> (', self.throatCns[point], ' total) ',  bits
 
+    def exportForTosho(self):
+        self.sanity()
+        coords = []
+        neigh = []
+        pointIdx = dict()
+        for point, bits in self.throats.iteritems():
+            pointIdx[point] = len(coords)
+            coords.append(point)
+        for point, bits in self.throats.iteritems():
+            for i in range(14):
+                if i < revAdjIdx[i]:
+                    adj = getAdj(point, i)
+                    if not isIn(adj, self.x_range, self.y_range, self.z_range):
+                        continue
+                    if bits[i]:
+                        idxA = pointIdx[point]
+                        idxB = pointIdx[adj]
+                        neigh.append((idxA, idxB, 0))
+        assert len(neigh) == sum(self.hist)
+        for point in coords: # my coords are * 2 and from 0
+            point[0] = point[0] / 2 + 100
+            point[1] = point[1] / 2 + 100
+            point[2] = point[2] / 2 + 100
+        for n in neigh: # matlab starts from 1
+            n[0] += 1
+            n[1] += 1
+        with open("coords.csv", "w") as f:
+            for point in coords:
+                f.write("%f,%f,%f\n" % (point[0], point[1], point[2]))
+        with open("neigh.csv", "w") as f:
+            for n in neigh:
+                f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
+
+    # requires that ranges and target are initialized accordingly
+    #
+    def importFromTosho(self):
+        self.throats = getInitThroats(self.x_range, self.y_range, self.z_range)
+        pointIdx = dict()
+        points = []
+        with open("coords.csv", "r") as f:
+            idx = 0
+            for line in f.readlines():
+                c = [int((float(x) - 100) * 2) for x in line.split(",")]
+                assert len(c) == 3
+                point = (c[0], c[1], c[2])
+                assert point not in pointIdx
+                assert isIn(point, self.x_range, self.y_range, self.z_range)
+                pointIdx[point] = idx
+                points.append(point)
+                idx += 1
+        with open("neigh.csv", "r") as f:
+            for line in f.readlines():
+                n = [int(x) for x in line.split(",")]
+                pointA = points[n[0] - 1]
+                pointB = points[n[1] - 1]
+                for i in range(14):
+                    adj = getAdj(point, i)
+                    if adj == pointB:
+                        assert i < revAdjIdx[i]
+                        self.throats[pointA][i] = 1
+                        self.throats[adj][revAdjIdx[i]] = 1
+                        break
+        self.recalc()
+
     def recalc(self):
         self.throatCns = calcThroatCns(self.throats)
         self.hist = calcHist(self.throatCns)
