@@ -71,10 +71,8 @@ def genetic(target, x_range, y_range, z_range):
                                 continue
                             bitMom = mom.throats[point][b]
                             bitDad = dad.throats[point][b]
-                            mom.throats[point][b] = bitDad
-                            mom.throats[adj][revAdjIdx[b]] = bitDad
-                            dad.throats[point][b] = bitMom
-                            dad.throats[adj][revAdjIdx[b]] = bitMom
+                            mom.set(point, b, bitDad)
+                            dad.set(point, b, bitMom)
             mom.recalc(target)
             dad.recalc(target)
 
@@ -88,9 +86,8 @@ def genetic(target, x_range, y_range, z_range):
                         if not isIn(adj, x_range, y_range, z_range):
                             continue
                         if random.random() < mutationProb:
-                           # print 'flip!'
-                            bits[b] = 1 - bits[b]
-                            solution.throats[adj][revAdjIdx[b]] = bits[b]
+                            # print 'flip!'
+                            solution.set(point, b, 1 - bits[b])
             solution.recalc(target)
 
         population = new_population

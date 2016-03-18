@@ -1,5 +1,6 @@
 from __future__ import division
 import random
+import copy
 
 # Total number of lattice points in range
 #
@@ -180,11 +181,39 @@ class Solution():
         self.recalc(target)
 
     def set(self, point, b, value):
-        assert isIn(point, self.x_range, self.y_range. self.z_range)
+        assert isIn(point, self.x_range, self.y_range, self.z_range)
         adj = getAdj(point, b)
-        assert isIn(adj, self.x_range, self.y_range. self.z_range)
+        assert isIn(adj, self.x_range, self.y_range, self.z_range)
         self.throats[point][b] = value
         self.throats[adj][revAdjIdx[b]] = value
+
+    def fitIfSet(self, point, b, value, target):
+        assert isIn(point, self.x_range, self.y_range, self.z_range)
+        adj = getAdj(point, b)
+        assert isIn(adj, self.x_range, self.y_range, self.z_range)
+        if self.throats[point][b] == value:
+            return self.fit
+
+        deltas = dict()
+        for p in [point, adj]:
+            old_bucket = self.throatCns[p]
+            if old_bucket in deltas:
+                deltas[old_bucket] -= 1
+            else:
+                deltas[old_bucket] = -1
+            new_bucket = old_bucket + (1 if value else -1)
+            assert new_bucket >= 0 and new_bucket <= 14
+            if new_bucket in deltas:
+                deltas[new_bucket] += 1
+            else:
+                deltas[new_bucket] = 1
+
+        new_cost = self.cost
+        print deltas
+        for bucket, delta in deltas.iteritems():
+            new_cost -= (self.hist[bucket] - target[bucket]) ** 2
+            new_cost += (self.hist[bucket] + delta - target[bucket]) ** 2
+        return 1 / new_cost
 
     def sanity(self, target):
         assert len(self.throats) == getN(self.x_range, self.y_range, self.z_range)

@@ -2,6 +2,7 @@ from __future__ import division
 
 from solution import *
 from genetic import *
+from greedy import *
 
 # assumes the corner points are at even coordinates
 # and that center points are at odd coordinates
@@ -30,10 +31,11 @@ if __name__ == '__main__':
 
     print getN(x_range, y_range, z_range)
     solution = Solution(target, x_range, y_range, z_range, randomize=True, prob = 0.5)
-    print len(solution.throats)
-    solution.output()
+    #print len(solution.throats)
+    #solution.output()
 
     #for point, idxs in throatIdxs.iteritems():
     #    print point, ' -> ', idxs
 
-    genetic(target, x_range, y_range, z_range)
+    greedy(target, x_range, y_range, z_range)
+    #genetic(target, x_range, y_range, z_range)
