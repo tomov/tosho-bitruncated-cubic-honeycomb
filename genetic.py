@@ -40,7 +40,7 @@ def genetic(target, x_range, y_range, z_range):
         if best.fit < population[bestIdx].fit:
             best = copy.deepcopy(population[bestIdx])
 
-        print datetime.datetime.now(), ': At gen ', gen, ': fitAvg = ', fitAvg, ' fitBest = ', fitBest
+        print datetime.datetime.now(), ': At gen ', gen, ': fitAvg = ', fitAvg, ' fitBest = ', fitBest, ' costBest = ', 1 / fitBest
         #print 'fitness = ', sorted([solution.fit for solution in population])
 
         # roulette wheel
@@ -73,8 +73,8 @@ def genetic(target, x_range, y_range, z_range):
                             bitDad = dad.throats[point][b]
                             mom.set(point, b, bitDad)
                             dad.set(point, b, bitMom)
-            mom.recalc(target)
-            dad.recalc(target)
+            mom.recalc()
+            dad.recalc()
 
         # mutate
         #
@@ -88,7 +88,7 @@ def genetic(target, x_range, y_range, z_range):
                         if random.random() < mutationProb:
                             # print 'flip!'
                             solution.set(point, b, 1 - bits[b])
-            solution.recalc(target)
+            solution.recalc()
 
         population = new_population
 

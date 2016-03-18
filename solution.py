@@ -1,6 +1,6 @@
 from __future__ import division
 import random
-import copy
+import json
 
 # Total number of lattice points in range
 #
@@ -145,6 +145,7 @@ class Solution():
     x_range = None
     y_range = None
     z_range = None
+    target = None
 
     throats = dict() # mapping point -> bitvector of throats for each neighbor, as ordered by getAllAdj
     throatCns = dict() # mapping point -> total # of throats
@@ -152,23 +153,72 @@ class Solution():
     cost = None # cost of histogram = sum of square difference btwn hist and target
     fit = None # 1 / cost
 
+    def isEqual(self, other):
+        if self.x_range != other.x_range:
+            return False
+        if self.y_range != other.z_range:
+            return False
+        if self.z_range != other.y_range:
+            return False
+        if self.target != other.target:
+            return False
+        if self.throats != other.throats:
+            return False
+        if self.throatCns != other.throatCns:
+            return False
+        if self.hist != other.hist:
+            return False
+        if self.cost != other.cost:
+            return False
+        if self.fit != other.fit:
+            return False
+        return True
+
+    def serialize(self, filename):
+        self.sanity()
+        with open(filename, "w") as f:
+            d = {
+                'x_range': self.x_range,
+                'y_range': self.y_range,
+                'z_range': self.z_range,
+                'target': self.target,
+                'throats_keys': self.throats.keys(),
+                'throats_values': self.throats.values()
+            }
+            f.write(json.dumps(d))
+
+    def deserialize(self, filename):
+        with open(filename, "r") as f:
+            s = f.read()
+            d = json.loads(s)
+            self.x_range = d['x_range']
+            self.y_range = d['y_range']
+            self.z_range = d['z_range']
+            self.target = d['target']
+            throats_keys = d['throats_keys']
+            throats_values = d['throats_values']
+            throats_keys = [tuple(k) for k in throats_keys]
+            self.throats = dict(zip(throats_keys, throats_values))
+            self.recalc()
+
     def output(self):
         print 'Solution -- cost = ', self.cost, ', hist = ', self.hist, ' fit = ', self.fit
         for point, bits in self.throats.iteritems():
             print point, ' -> (', self.throatCns[point], ' total) ',  bits
 
-    def recalc(self, target):
+    def recalc(self):
         self.throatCns = calcThroatCns(self.throats)
         self.hist = calcHist(self.throatCns)
-        self.cost = calcCost(self.hist, target)
+        self.cost = calcCost(self.hist, self.target)
         self.fit = 1 / self.cost
-        self.sanity(target) # TODO enable every now and then
+        self.sanity() # TODO enable every now and then
 
     def __init__(self, target, x_range, y_range, z_range, randomize=False, prob=0):
         self.throats = getInitThroats(x_range, y_range, z_range)
         self.x_range = x_range
         self.y_range = y_range
         self.z_range = z_range
+        self.target = target
         if randomize:
             for point, bits in self.throats.iteritems():
                 for i in range(14):
@@ -178,7 +228,7 @@ class Solution():
                             continue
                         bits[i] = 1
                         self.throats[adj][revAdjIdx[i]] = 1
-        self.recalc(target)
+        self.recalc()
 
     def set(self, point, b, value):
         assert isIn(point, self.x_range, self.y_range, self.z_range)
@@ -187,7 +237,7 @@ class Solution():
         self.throats[point][b] = value
         self.throats[adj][revAdjIdx[b]] = value
 
-    def costIfSet(self, point, b, value, target):
+    def costIfSet(self, point, b, value):
         assert isIn(point, self.x_range, self.y_range, self.z_range)
         adj = getAdj(point, b)
         assert isIn(adj, self.x_range, self.y_range, self.z_range)
@@ -210,11 +260,11 @@ class Solution():
 
         new_cost = self.cost
         for bucket, delta in deltas.iteritems():
-            new_cost -= (self.hist[bucket] - target[bucket]) ** 2
-            new_cost += (self.hist[bucket] + delta - target[bucket]) ** 2
+            new_cost -= (self.hist[bucket] - self.target[bucket]) ** 2
+            new_cost += (self.hist[bucket] + delta - self.target[bucket]) ** 2
         return new_cost
 
-    def sanity(self, target):
+    def sanity(self):
         assert len(self.throats) == getN(self.x_range, self.y_range, self.z_range)
         assert len(self.throats) == len(self.throatCns)
         for point, bits in self.throats.iteritems():
@@ -231,6 +281,6 @@ class Solution():
             assert self.throatCns[point] <= 14
             assert self.throatCns[point] >= 0
         assert self.hist == calcHist(self.throatCns)
-        assert self.cost == calcCost(self.hist, target)
+        assert self.cost == calcCost(self.hist, self.target)
         assert self.fit == 1 / self.cost
 
