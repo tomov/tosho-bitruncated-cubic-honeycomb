@@ -29,7 +29,7 @@ def greedy(target, x_range, y_range, z_range, name):
     random.shuffle(all_idx)
 
     cur_idx = 0
-    for it in range(100000):
+    for it in range(100000000):
         neighbor = None
         #idx = np.random.choice(all_idx, 10, replace=False) # TODO param
         start_idx = cur_idx
@@ -60,12 +60,12 @@ def greedy(target, x_range, y_range, z_range, name):
         point = best[1]
         b = best[2]
         value = best[3]
-        #sanity = copy.deepcopy(solution)
-        #sanity.set(point, b, value)
-        #sanity.recalc()
+        #sanity = copy.deepcopy(solution) # uncomment for sanity
+        #sanity.set(point, b, value) # uncomment for sanity
+        #sanity.recalc() # uncomment for sanity
         solution.setAndRecalc(point, b, value)
         assert solution.cost == cost
-        #assert solution.isEqual(sanity)
+        #assert solution.isEqual(sanity) # uncomment for sanity
 
         print name, 'iter = ', it, ' cost = ', solution.cost, ' time per iter = ', (datetime.datetime.now() - then).total_seconds() / (it + 1)
         print name, 'target = ', target
