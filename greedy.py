@@ -60,9 +60,13 @@ def greedy(target, x_range, y_range, z_range, name):
         point = best[1]
         b = best[2]
         value = best[3]
-        solution.set(point, b, value)
-        solution.recalc()
+        #sanity = copy.deepcopy(solution)
+        #sanity.set(point, b, value)
+        #sanity.recalc()
+        solution.setAndRecalc(point, b, value)
         assert solution.cost == cost
+        #assert solution.isEqual(sanity)
+
         print name, 'iter = ', it, ' cost = ', solution.cost, ' time per iter = ', (datetime.datetime.now() - then).total_seconds() / (it + 1)
         print name, 'target = ', target
         print name, 'solution = ', solution.hist
@@ -70,5 +74,7 @@ def greedy(target, x_range, y_range, z_range, name):
         costs.append(solution.cost)
         if len(costs) > 40 and cost in costs[-40:-20]:
             break
+
+    print 'Total time = ', (datetime.datetime.now() - then).total_seconds()
 
     return solution

@@ -296,19 +296,14 @@ class Solution():
         self.recalc()
 
     def set(self, point, b, value):
+        assert value == 0 or value == 1
         assert isIn(point, self.x_range, self.y_range, self.z_range)
         adj = getAdj(point, b)
         assert isIn(adj, self.x_range, self.y_range, self.z_range)
         self.throats[point][b] = value
         self.throats[adj][revAdjIdx[b]] = value
 
-    def costIfSet(self, point, b, value):
-        assert isIn(point, self.x_range, self.y_range, self.z_range)
-        adj = getAdj(point, b)
-        assert isIn(adj, self.x_range, self.y_range, self.z_range)
-        if self.throats[point][b] == value:
-            return self.cost
-
+    def __hist_deltas(self, point, b, value, adj):
         deltas = dict()
         for p in [point, adj]:
             old_bucket = self.throatCns[p]
@@ -322,6 +317,49 @@ class Solution():
                 deltas[new_bucket] += 1
             else:
                 deltas[new_bucket] = 1
+        return deltas
+
+
+    def setAndRecalc(self, point, b, value):
+        old_value = self.throats[point][b]
+        if old_value == value:
+            return
+        self.set(point, b, value)
+        adj = getAdj(point, b)
+        assert isIn(adj, self.x_range, self.y_range, self.z_range)
+
+        # get hist deltas
+        deltas = self.__hist_deltas(point, b, value, adj)
+
+        # update throatCns AFTER getting hist deltas
+        if old_value:
+            self.throatCns[point] -= 1
+            self.throatCns[adj] -= 1
+        else:
+            self.throatCns[point] += 1
+            self.throatCns[adj] += 1
+
+        # update cost
+        for bucket, delta in deltas.iteritems():
+            self.cost -= (self.hist[bucket] - self.target[bucket]) ** 2
+            self.cost += (self.hist[bucket] + delta - self.target[bucket]) ** 2
+        self.fit = 1 / self.cost
+
+        # update hists AFTER update cost
+        for bucket, delta in deltas.iteritems():
+            self.hist[bucket] += delta
+
+        #self.sanity()
+
+
+    def costIfSet(self, point, b, value):
+        assert isIn(point, self.x_range, self.y_range, self.z_range)
+        if self.throats[point][b] == value:
+            return self.cost
+        adj = getAdj(point, b)
+        assert isIn(adj, self.x_range, self.y_range, self.z_range)
+
+        deltas = self.__hist_deltas(point, b, value, adj)
 
         new_cost = self.cost
         for bucket, delta in deltas.iteritems():
