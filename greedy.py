@@ -24,16 +24,36 @@ def greedy(target, x_range, y_range, z_range, name):
 
     then = datetime.datetime.now()
 
+    points = solution.throats.keys()
+    all_idx = range(len(points))
+    random.shuffle(all_idx)
+
+    cur_idx = 0
     for it in range(100000):
         neighbor = None
-        for point, bits in solution.throats.iteritems():
+        #idx = np.random.choice(all_idx, 10, replace=False) # TODO param
+        start_idx = cur_idx
+        terminate = False
+        while True:
+            point = points[cur_idx]
+            bits = solution.throats[point]
             for b in range(14):
                 adj = getAdj(point, b)
                 if not isIn(adj, x_range, y_range, z_range):
                     continue
                 new_cost = solution.costIfSet(point, b, 1 - bits[b])
-                if not neighbor or new_cost < neighbor[0]:
+                if new_cost < solution.cost:
                     neighbor = (new_cost, point, b, 1 - bits[b])
+                    break
+            if neighbor:
+                break
+            cur_idx = (cur_idx + 1) % len(points)
+            if cur_idx == start_idx:
+                terminate = True # we've reached a local minimum
+                break
+
+        if terminate:
+            break
         best = neighbor
 
         cost = best[0]

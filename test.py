@@ -24,6 +24,7 @@ def infinite_greedy(thd):
         if not best or best.cost > new_solution.cost:
             best = new_solution
             best.serialize("best_greedy_" + str(thd) + ".json")
+        break
 
 if __name__ == '__main__':
     print getN([0, 15 * 2], [0, 15 * 2], [0, 15 * 2])
@@ -53,7 +54,7 @@ if __name__ == '__main__':
     #for point, idxs in throatIdxs.iteritems():
     #    print point, ' -> ', idxs
 
-    procs = [Process(target=infinite_greedy, args=(i,)) for i in range(4)]
+    procs = [Process(target=infinite_greedy, args=(i,)) for i in range(1)]
     [p.start() for p in procs]
     [p.join() for p in procs]
 
