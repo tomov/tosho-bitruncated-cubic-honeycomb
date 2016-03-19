@@ -1,6 +1,5 @@
-# Gradient descent w/ heuristic --
-# At each step, go to first neighbor that is better
-# Keep iterating over neighbors in round-robin fashion across steps
+# Gradient descent to steepest among K random neighbors.
+# Much better than looking at all neighbors but still meh
 #
 
 from __future__ import division
@@ -23,51 +22,51 @@ def greedy(target, x_range, y_range, z_range, name):
     prob = throatsN/maxThroatsN
 
     solution = Solution(target, x_range, y_range, z_range, randomize=True, prob=prob)
-    print 'initial cost = ' + str(solution.cost)
+    print 'cost = ' + str(solution.cost)
+
+    costs = []
 
     then = datetime.datetime.now()
-    points = solution.throats.keys()
-    cur_idx = 0
-    it = 0
 
-    while it < 10000000000:
+    points = solution.throats.keys()
+    all_idx = range(len(points))
+    random.shuffle(all_idx)
+
+    it = 0
+    while it < 1000000000:
         neighbor = None
-        start_idx = cur_idx
-        while True:
-            point = points[cur_idx]
+        idx = np.random.choice(all_idx, 10, replace=False) # TODO param
+        for i in idx:
+            point = points[i]
             bits = solution.throats[point]
             for b in range(14):
                 adj = getAdj(point, b)
                 if not isIn(adj, x_range, y_range, z_range):
                     continue
                 new_cost = solution.costIfSet(point, b, 1 - bits[b])
-                if new_cost < solution.cost:
+                if not neighbor or neighbor[0] > new_cost:
                     neighbor = (new_cost, point, b, 1 - bits[b])
                     break
-            if neighbor: # we found a better neighbor
-                break
-            cur_idx = (cur_idx + 1) % len(points)
-            if cur_idx == start_idx: # we went all the way round
-                break
 
-        if not neighbor:
-            break # we're at a local minimum
         cost = neighbor[0]
         point = neighbor[1]
         b = neighbor[2]
         value = neighbor[3]
-
         #sanity = copy.deepcopy(solution) # uncomment for sanity
         #sanity.set(point, b, value) # uncomment for sanity
         #sanity.recalc() # uncomment for sanity
-        #assert solution.isEqual(sanity) # uncomment for sanity
-
         solution.setAndRecalc(point, b, value)
         assert solution.cost == cost
+        #assert solution.isEqual(sanity) # uncomment for sanity
 
         print name, 'iter = ', it, ' cost = ', solution.cost, ' time per iter = ', (datetime.datetime.now() - then).total_seconds() / (it + 1)
         print name, 'target = ', target
         print name, 'solution = ', solution.hist
+
+        costs.append(solution.cost)
+        if len(costs) > 40 and cost in costs[-40:-20]:
+            break
+
         it += 1
 
     print 'Total time = ', (datetime.datetime.now() - then).total_seconds()
