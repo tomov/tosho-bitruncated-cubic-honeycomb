@@ -1,6 +1,6 @@
 from solution import *
 
-from test import ASA_Sandstone_1 as target
+from run import ASA_Sandstone_1 as target
 
 if __name__ == '__main__':
 

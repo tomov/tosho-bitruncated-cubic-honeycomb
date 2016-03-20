@@ -1,7 +1,13 @@
+# Represens a single solution to the distribution
+# assumes the corner points are at even coordinates
+# and that center points are at odd coordinates
+# see https://en.wikipedia.org/wiki/Cubic_crystal_system
+
 from __future__ import division
 import random
 import json
 import math
+
 
 # Total number of lattice points in range
 #
@@ -14,6 +20,7 @@ def getN(x_range, y_range, z_range):
     return ret
 
 # truncate / extend a histogram to 14 buckets
+# assumes sum is 1
 #
 def truncate(hist):
     if len(hist) < 15:
@@ -207,7 +214,7 @@ class Solution():
         for point, bits in self.throats.iteritems():
             print point, ' -> (', self.throatCns[point], ' total) ',  bits
 
-    def exportForTosho(self):
+    def exportForTosho(self, prefix = "", suffix = ""):
         self.sanity()
         coords = []
         neigh = []
@@ -233,20 +240,20 @@ class Solution():
         for n in neigh: # matlab starts from 1
             n[0] += 1
             n[1] += 1
-        with open("coords.csv", "w") as f:
+        with open("%scoords%s.csv" % (prefix, suffix), "w") as f:
             for point in coords:
                 f.write("%f,%f,%f\n" % (point[0], point[1], point[2]))
-        with open("neigh.csv", "w") as f:
+        with open("%sneigh%s.csv" % (prefix, suffix), "w") as f:
             for n in neigh:
                 f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
 
     # requires that ranges and target are initialized accordingly
     #
-    def importFromTosho(self):
+    def importFromTosho(self, prefix = "", suffix = ""):
         self.throats = getInitThroats(self.x_range, self.y_range, self.z_range)
         pointIdx = dict()
         points = []
-        with open("coords.csv", "r") as f:
+        with open("%scoords%s.csv" % (prefix, suffix), "r") as f:
             idx = 0
             for line in f.readlines():
                 c = [int((float(x) - 100) * 2) for x in line.split(",")]
@@ -257,7 +264,7 @@ class Solution():
                 pointIdx[point] = idx
                 points.append(point)
                 idx += 1
-        with open("neigh.csv", "r") as f:
+        with open("%sneigh%s.csv" % (prefix, suffix), "r") as f:
             for line in f.readlines():
                 n = [int(x) for x in line.split(",")]
                 pointA = points[n[0] - 1]
