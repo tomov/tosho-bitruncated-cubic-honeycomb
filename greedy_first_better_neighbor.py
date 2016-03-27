@@ -58,12 +58,13 @@ def greedy(target, x_range, y_range, z_range, name):
         value = neighbor[3]
 
         #sanity = copy.deepcopy(solution) # uncomment for sanity
-        #sanity.set(point, b, value) # uncomment for sanity
-        #sanity.recalc() # uncomment for sanity
-        #assert solution.isEqual(sanity) # uncomment for sanity
 
         solution.setAndRecalc(point, b, value)
         assert solution.cost == cost
+
+        #sanity.set(point, b, value) # uncomment for sanity
+        #sanity.recalc() # uncomment for sanity
+        #assert solution.isEqual(sanity) # uncomment for sanity
 
         it += 1
 
