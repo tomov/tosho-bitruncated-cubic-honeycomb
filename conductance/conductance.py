@@ -138,11 +138,12 @@ if __name__ == '__main__':
     ending = []
     min_x = min([pore[0] for pore in coords])
     max_x = max([pore[0] for pore in coords])
+    left_x = [pore[0] - pore[3] for pore in coords]
+    right_x = [pore[0] + pore[3] for pore in coords]
     for i in range(len(coords)):
-        pore = coords[i]
-        if pore[0] == min_x:
+        if left_x[i] <= min_x:
             starting.append(i)
-        if pore[0] == max_x:
+        if right_x[i] >= max_x:
             ending.append(i)
     max_g = dijkstra(coords, neigh, starting, ending)
     print 'MAX g = ', max_g
