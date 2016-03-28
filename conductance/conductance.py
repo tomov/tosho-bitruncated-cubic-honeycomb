@@ -1,4 +1,5 @@
 import math
+import sys
 import heapq as heap
 
 coords = None # array of pores = (pore X, pore Y, pore Z, pore radius in m)
@@ -13,6 +14,8 @@ def ThLen(throat, coords):
     pore1 = coords[throat[0]]
     pore2 = coords[throat[1]]
     ret = ThTotLen(throat, coords) - pore1[3] - pore2[3]
+    if ret < 0:
+        return 1e-6
     return ret
 
 def G(throat, coords):
@@ -31,6 +34,8 @@ def readCSV(filename):
     neigh = []
     with open(filename, 'r') as f:
         for line in f:
+            if line.startswith('X'):
+                continue
             line = line.split(',')
             if line[0] != '':
                 pore = (float(line[0]) * 1e-6, float(line[1]) * 1e-6, float(line[2]) * 1e-6, float(line[6]) * 1e-6)
@@ -123,8 +128,11 @@ def WTFxsWhy():
         prev = x
 
 if __name__ == '__main__':
+    filename = sys.argv[1]
+    coords, neigh = readCSV(filename)
     #coords, neigh = readCSV('Sand1Ori.csv')
-    coords, neigh = readCSV('Sand1N10Ind9.csv')
+    #coords, neigh = readCSV('Sand1N10Ind9.csv')
+    #coords, neigh = readCSV('Sand1N10Ind53.csv')
 
     starting = []
     ending = []
