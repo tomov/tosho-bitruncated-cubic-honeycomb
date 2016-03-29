@@ -1,9 +1,28 @@
+# Find the path with maximum conductance from left to right boundary
+# usage: python conductance.py [input file/dir] [output file]
+# example #1: python conductance.py input.csv output.csv
+# example #2: python conductance.py datadir output.csv
+# If the input filename ends with '.csv', it is read as the only input file
+# Otherwise, it is treated as a directory and all .csv files from that directory and its subdirectories (!) are used as input files
+# The output for all files is appended (!) to the output file.
+#
+
 import math
 import sys
+import os
 import heapq as heap
 
-coords = None # array of pores = (pore X, pore Y, pore Z, pore radius in m)
-neigh = None  # array of throats = (throat pore 1 index in coords, throat pore 2, throat radius in m)
+"""
+coords # array of pores = (pore X, pore Y, pore Z, pore radius in m)
+neigh  # array of throats = (throat pore 1 index in coords, throat pore 2, throat radius in m)
+left # idxs of pores on left boundary
+right # idxs of pores on right boundary
+ucs # size of single cell (???)
+n # number of pores along axis
+permeability # as computed by the complicated formulas
+"""
+
+do_print = False
 
 def ThTotLen(throat, coords):
     pore1 = coords[throat[0]]
@@ -30,19 +49,41 @@ def G(throat, coords):
     return ThTotLen(throat, coords) / denominator
 
 def readCSV(filename):
+    # Row format:
+    #  0 1 2  3     4     5   6  7  8  9  10  11 
+    # [X,Y,Z,Pore1,Pore2,ThR,Pr,LB,RB,UCS,N,Perm] 
+    #
     coords = []
     neigh = []
+    left = []
+    right = []
+    ucs = None
+    n = None
+    permeability = None
     with open(filename, 'r') as f:
         for line in f:
-            if line.startswith('X'):
-                continue
             line = line.split(',')
-            if line[0] != '':
+            line = [l.strip() for l in line]
+            if line[0] != '' and line[0] != '0':
                 pore = (float(line[0]) * 1e-6, float(line[1]) * 1e-6, float(line[2]) * 1e-6, float(line[6]) * 1e-6)
                 coords.append(pore)
-            throat = (int(line[3]) - 1, int(line[4]) - 1, float(line[5]) * 1e-6)
-            neigh.append(throat)
-    return coords, neigh
+            if line[3] != '' and line[3] != '0':
+                throat = (int(line[3]) - 1, int(line[4]) - 1, float(line[5]) * 1e-6)
+                neigh.append(throat)
+            if line[7] != '' and line[7] != '0':
+                idx = int(line[7]) - 1
+                left.append(idx)
+            if line[8] != '' and line[8] != '0':
+                idx = int(line[8]) - 1
+                right.append(idx)
+            if line[9] != '' and line[9] != '0':
+                ucs = float(line[9])
+            if line[10] != '' and line[10] != '0':
+                n = int(line[10])
+            if line[11] != '' and line[11] != '0':
+                permeability = float(line[11])
+
+    return coords, neigh, left, right, ucs, n, permeability
 
 def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     # Build adjacency lists
@@ -53,7 +94,8 @@ def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
         idx2 = throat[1]
         g = G(throat, coords)
         l = ThTotLen(throat, coords)
-        print 'throat ', idx1, idx2, l/g, l, g
+        if do_print:
+            print 'throat ', idx1, idx2, l/g, l, g
         if idx1 in adj:
             adj[idx1].append((idx2, l/g, l))
         else:
@@ -69,15 +111,17 @@ def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     pq = []
     [heap.heappush(pq, (0, 0, idx)) for idx in starting_pore_idxs]
 
-    print 'starting: '
-    for idx in starting_pore_idxs:
-        print idx, ' = ', coords[idx]
+    if do_print:
+        print 'starting: '
+        for idx in starting_pore_idxs:
+            print idx, ' = ', coords[idx]
 
     visited = set()
     prev = dict()
     dist = dict()
     for idx in starting_pore_idxs:
         dist[idx] = (0, 0)
+        prev[idx] = None
 
     while len(pq) > 0:
         top = heap.heappop(pq)
@@ -97,43 +141,38 @@ def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
                     prev[neighbor] = idx
                     heap.heappush(pq, (new_lg, new_l, neighbor))
           #          print '                  add to heap! ', idx, ' --> ', neighbor, ' ', (new_lg, new_l, neighbor)
-    
+   
+    # Find max g
+    #
     gs = []
-    for idx in ending:
+    for idx in ending_pore_idxs:
         if idx not in dist:
             continue
-        print 'ending ', idx, ' -> ', dist[idx]
+        if do_print:
+            print 'ending ', idx, ' -> ', dist[idx], ' prev = ', prev[idx]
         lg = dist[idx][0]
         l = dist[idx][1]
         g = l / lg
-        gs.append(g)
-        print '               g = ', g
+        gs.append((g, idx))
+        if do_print:
+            print '               g = ', g
 
-    return max(gs)
+    max_g = max(gs)[0]
 
-def WTFxsWhy():
-    xs = dict()
-    for pore in coords:
-        x = pore[0]
-        if x in xs:
-            xs[x] += 1
-        else:
-            xs[x] = 1
+    # Find its path
+    #
+    idx = max(gs)[1]
+    path = []
+    while idx is not None:
+        path.append(idx)
+        idx = prev[idx]
+    path = list(reversed(path))
 
-    xs = [(x, c) for x, c in xs.iteritems()]
-    xs = sorted(xs)
-    prev = 0
-    for x, c in xs:
-        print x, c, '           ', x - prev
-        prev = x
+    return max_g, path
 
-if __name__ == '__main__':
-    filename = sys.argv[1]
-    coords, neigh = readCSV(filename)
-    #coords, neigh = readCSV('Sand1Ori.csv')
-    #coords, neigh = readCSV('Sand1N10Ind9.csv')
-    #coords, neigh = readCSV('Sand1N10Ind53.csv')
-
+# In case they're not given
+#
+def getBoundaries(coords):
     starting = []
     ending = []
     min_x = min([pore[0] for pore in coords])
@@ -145,5 +184,46 @@ if __name__ == '__main__':
             starting.append(i)
         if right_x[i] >= max_x:
             ending.append(i)
-    max_g = dijkstra(coords, neigh, starting, ending)
+    return starting, ending
+
+def solve(infile, outfile):
+    coords, neigh, left, right, ucs, n, permeability = readCSV(infile)
+    print '---------- solving', infile, '--------------'
+    print 'N = ', n
+    print 'UCS = ', ucs
+    print 'Perm = ', permeability
+    print '# pores = ', len(coords)
+    print '# throats = ', len(neigh)
+    print '# pores on left boundary = ', len(left)
+    print '# pores on right boundary = ', len(right)
+
+    print 'Running dijkstra....'
+    max_g, path = dijkstra(coords, neigh, left, right)
     print 'MAX g = ', max_g
+    print 'Path = ', path
+    assert path[0] in left
+    assert path[-1] in right
+
+    # TODO sanity path calc make sure it's same as max g
+
+    with open(outfile, 'a') as f:
+        res = [infile, permeability, max_g, max_g / (n * ucs), ' '.join([str(p + 1) for p in path])]
+        f.write(','.join([str(x) for x in res]) + '\n')
+
+if __name__ == '__main__':
+    infile = sys.argv[1]
+    outfile = sys.argv[2]
+
+    if infile.lower().endswith('.csv'):
+        # single file
+        #
+        solve(infile, outfile)
+    else:
+        # directory of files
+        #
+        dirname = infile 
+        for (path, dirs, files) in os.walk(dirname):
+            print '\n============ EXPLORING DIRECTORY', path, '=================\n'
+            for filename in files:
+                if filename.lower().endswith('.csv'):
+                    solve(os.path.join(path, filename), outfile)
