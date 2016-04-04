@@ -170,6 +170,154 @@ def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
 
     return max_g, path
 
+def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs):
+    vertices = coords[:]
+    edges = neigh[:]
+   
+    # add source & sink
+    #
+    source = len(vertices)
+    vertices.append((0, 0, 0, 0))
+    sink = len(vertices)
+    vertices.append((0, 0, 0, 0))
+    
+    for idx in starting_pore_idxs:
+        edges.append((source, idx, 0))
+    for idx in ending_pore_idxs:
+        edges.append((idx, sink, 0))
+
+    # add rev edges -- edge[i] is rev of edge[i * 2]
+    # so now each edge is directed
+    #
+    edges_n = len(edges)
+    cap = [1] * len(edges)
+    flow = [0] * len(edges)
+    rev = [i + edges_n for i in range(edges_n)] # idx of rev edge
+    for idx in range(edges_n):
+        u = edges[idx][0]
+        v = edges[idx][1]
+        edges.append((v, u, 0))
+        flow.append(0)
+        cap.append(1)
+        rev.append(idx)
+
+    # Make capacities to/from source/sink infinite
+    #
+    for idx in range(len(edges)):
+        u = edges[idx][0]
+        v = edges[idx][1]
+        if u == sink or u == source or v == sink or v == source:
+            cap[idx] = 100000000
+
+    # Build adjacency lists -- adj[v] = list of outgoing edges from v
+    #
+    adj = dict()
+    for idx in range(len(edges)):
+        u = edges[idx][0]
+        if u in adj:
+            adj[u].append(idx)
+        else:
+            adj[u] = [idx]
+
+    while True:
+        if do_print:
+            print '----------- iteration ----------------'
+
+        # BFS
+        #
+        foundPath = False
+        prev = [None] * len(vertices)
+        prev_edge = [None] * len(vertices)
+        visited = [0] * len(vertices)
+        visited[source] = True
+        pq = [source]
+        head = 0
+        while head < len(pq) and not foundPath:
+            u = pq[head]
+            head += 1
+            if do_print:
+                print '   in ', u
+            for idx in adj[u]:
+                e = edges[idx]
+                v = e[1]
+                cf = cap[idx] - flow[idx]
+                if do_print:
+                    print '         to ', v, ' flow = ', flow[idx], ' cap = ', cap[idx], ' cf = ', cf, ' visited ', visited[v]
+                if cf > 0 and not visited[v]:
+                    if do_print:
+                        print '                       go!'
+                    pq.append(v)
+                    visited[v] = True
+                    prev[v] = u
+                    prev_edge[v] = idx
+                    if u == sink:
+                        if do_print:
+                            print '                           SINK!'
+                        foundPath = True
+                        break
+        if not foundPath:
+            # no more augmeting paths
+            #
+            break
+
+        # Reconstruct path
+        #
+        v = sink
+        path = []
+        path_edges = []
+        while v != source:
+            path.append(v)
+            path_edges.append(prev_edge[v])
+            v = prev[v]
+        path.append(source)
+        path = list(reversed(path))
+        path_edges = list(reversed(path_edges))
+        if do_print:
+            print '    augmenting path = ', path
+            print '    augmenting path edges = ', path_edges
+
+        # Find min augmented capacity
+        #
+        min_cf = None
+        for idx in path_edges:
+            u = edges[idx][0]
+            v = edges[idx][1]
+            cf = cap[idx] - flow[idx]
+            assert cf > 0
+            if do_print:
+                print '              min_cf :  edge ', idx, ' = ', u, v, ' cf = ', cf
+            if min_cf is None or min_cf > cf:
+                min_cf = cf
+        if do_print:
+            print '     Min cf = ', min_cf
+
+        # Augment path
+        #
+        for idx in path_edges:
+            u = edges[idx][0]
+            v = edges[idx][1]
+            ridx = rev[idx]
+            flow[idx] += min_cf
+            flow[ridx] -= min_cf
+            assert edges[ridx][0] == v
+            assert edges[ridx][1] == u
+            assert flow[idx] <= cap[idx]
+            assert flow[ridx] <= cap[ridx]
+            if do_print:
+                print '              augment :  edge ', idx, ' = ', u, v, ' flow = ', flow[idx], ' r flow (for ', ridx, ') = ', flow[ridx]
+
+    max_flow = 0
+    for idx in range(len(edges)):
+        if edges[idx][0] == source:
+            if do_print:
+                print '    max flow ', idx, ' (', source, edges[idx][1], ') += ', flow[idx]
+            max_flow += flow[idx]
+
+    # TODO sanity that sum(sink) == sum(source)
+
+    print 'MAX FLOW = ', max_flow
+    return max_flow 
+
 # In case they're not given
 #
 def getBoundaries(coords):
@@ -196,6 +344,12 @@ def solve(infile, outfile):
     print '# throats = ', len(neigh)
     print '# pores on left boundary = ', len(left)
     print '# pores on right boundary = ', len(right)
+
+    if len(left) == 0 or len(right) == 0:
+        left, right = getBoundaries(coords)
+        print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
+
+    edmondsKarp(coords, neigh, left, right)
 
     print 'Running dijkstra....'
     max_g, path = dijkstra(coords, neigh, left, right)
