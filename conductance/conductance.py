@@ -376,7 +376,7 @@ def solve(infile, outfile):
     print '# pores on right boundary = ', len(right)
 
     if len(left) == 0 or len(right) == 0:
-        left, right = getBoundaries(coords, direction=1)
+        left, right = getBoundaries(coords, direction=0)
         print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
 
     edmondsKarp(coords, neigh, left, right)
