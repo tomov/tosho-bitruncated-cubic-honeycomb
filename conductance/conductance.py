@@ -379,7 +379,7 @@ def solve(infile, outfile):
         left, right = getBoundaries(coords, direction=0)
         print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
 
-    edmondsKarp(coords, neigh, left, right)
+    edmondsKarp(coords, neigh, left, right, doubleVertices=True)
 
     print 'Running dijkstra....'
     max_g, path = dijkstra(coords, neigh, left, right)
