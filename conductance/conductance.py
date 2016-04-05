@@ -42,7 +42,7 @@ def G(throat, coords):
     pore2 = coords[throat[1]]
     viscosity = 0.001 # Pa * s
     def addend(pore):
-        return pore[3] / ((math.pi * (pore[3] * 2/3) ** 4) / (8 * viscosity))
+        return pore[3] / ((math.pi * (pore[3] * 0.58) ** 4) / (8 * viscosity))
 
     addend_throat = ThLen(throat, coords) / ((math.pi * throat[2] ** 4) / (8 * viscosity))
     denominator = addend(pore1) + addend(pore2) + addend_throat
@@ -170,7 +170,7 @@ def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
 
     return max_g, path
 
-def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs):
+def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVertices=False):
     vertices = coords[:]
     edges = neigh[:]
    
@@ -186,7 +186,7 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     for idx in ending_pore_idxs:
         edges.append((idx, sink, 0))
 
-    # add rev edges -- edge[i] is rev of edge[i * 2]
+    # add rev edges -- edge[i] is rev of edge[i + edges_n]
     # so now each edge is directed
     #
     edges_n = len(edges)
@@ -208,6 +208,35 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs):
         v = edges[idx][1]
         if u == sink or u == source or v == sink or v == source:
             cap[idx] = 100000000
+
+    # Double vertices -- for each vertex, create in-vertex and out-vertex
+    # and have all incoming edges to former and outgoing edges from latter
+    # with a capacity 1 edge between in-vertex and out-vertex
+    # that way you find the min cut of pores / vertices
+    # for convenience, in-vertex is vertices[i] and out-vertex is vertices[i + vertices_n]
+    #
+    if doubleVertices:
+        vertices_n = len(vertices)
+        for i in range(vertices_n):
+            vertices.append(vertices[i])
+        for idx in range(edges_n): # make edges u_out -> v_in
+            e = edges[idx]
+            new_edge = (e[0] + vertices_n, e[1], e[2])
+            edges[idx] = new_edge
+            e = edges[idx + edges_n] # reverse edge
+            new_edge = (e[0], e[1] + vertices_n, e[2])
+            edges[idx + edges_n] = new_edge
+        source += vertices_n # source is out-vertex
+        for u in range(vertices_n): # add in-out edges
+            v = u + vertices_n
+            edges.append((u, v, 0))
+            flow.append(0)
+            cap.append(1)
+            rev.append(len(edges))
+            edges.append((v, u, 0)) # and reverse edge
+            flow.append(0)
+            cap.append(0)
+            rev.append(len(edges) - 2)
 
     # Build adjacency lists -- adj[v] = list of outgoing edges from v
     #
@@ -319,18 +348,19 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     return max_flow 
 
 # In case they're not given
+# direction = 0 => X, 1 => Y, 2 => Z
 #
-def getBoundaries(coords):
+def getBoundaries(coords, direction):
     starting = []
     ending = []
-    min_x = min([pore[0] for pore in coords])
-    max_x = max([pore[0] for pore in coords])
-    left_x = [pore[0] - pore[3] for pore in coords]
-    right_x = [pore[0] + pore[3] for pore in coords]
+    min_b = min([pore[direction] for pore in coords])
+    max_b = max([pore[direction] for pore in coords])
+    left_b = [pore[direction] - pore[3] for pore in coords]
+    right_b = [pore[direction] + pore[3] for pore in coords]
     for i in range(len(coords)):
-        if left_x[i] <= min_x:
+        if left_b[i] <= min_b:
             starting.append(i)
-        if right_x[i] >= max_x:
+        if right_b[i] >= max_b:
             ending.append(i)
     return starting, ending
 
@@ -346,7 +376,7 @@ def solve(infile, outfile):
     print '# pores on right boundary = ', len(right)
 
     if len(left) == 0 or len(right) == 0:
-        left, right = getBoundaries(coords)
+        left, right = getBoundaries(coords, direction=1)
         print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
 
     edmondsKarp(coords, neigh, left, right)
