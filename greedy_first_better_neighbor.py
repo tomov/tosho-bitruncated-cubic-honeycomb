@@ -33,9 +33,11 @@ def greedy(target, x_range, y_range, z_range, name):
 
     # randomize the neighbors of each pore i.e. the throats
     #
-    adj_idxs = [range(14)] * len(all_idx)
-    for i in range(len(adj_idxs)):
-        random.shuffle(adj_idxs[i])
+    adj_idxs = []
+    for i in range(len(all_idx)):
+        r = range(14)
+        random.shuffle(r)
+        adj_idxs.append(r)
 
     then = datetime.datetime.now()
 
