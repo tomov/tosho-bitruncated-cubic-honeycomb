@@ -25,36 +25,59 @@ def greedy(target, x_range, y_range, z_range, name):
     solution = Solution(target, x_range, y_range, z_range, randomize=True, prob=prob)
     print name, ': initial cost = ' + str(solution.cost)
 
+    # randomize the pores
+    #
     points = solution.throats.keys()
     all_idx = range(len(points))
     random.shuffle(all_idx)
+
+    # randomize the neighbors of each pore i.e. the throats
+    #
+    adj_idxs = [range(14)] * len(all_idx)
+    for i in range(len(adj_idxs)):
+        random.shuffle(adj_idxs[i])
 
     then = datetime.datetime.now()
 
     cur_idx = 0
     it = 0
+    # while we keep finding better solutions
+    #
     while True:
         neighbor = None
         start_idx = cur_idx
+        # keep going round-robin across all pores
+        #
         while True:
-            point = points[all_idx[cur_idx]]
+            idx = all_idx[cur_idx]
+            point = points[idx]
             bits = solution.throats[point]
-            for b in range(14):
+            # for each pore, try toggling all throats coming out of it
+            #
+            for b in adj_idxs[idx]:
                 adj = getAdj(point, b)
                 if not isIn(adj, x_range, y_range, z_range):
                     continue
                 new_cost = solution.costIfSet(point, b, 1 - bits[b])
+                # see if the "neighboring" solution is better
+                #
                 if new_cost < solution.cost:
                     neighbor = (new_cost, point, b, 1 - bits[b])
                     break
-            if neighbor: # we found a better neighbor
+            # stop if we found a better "neighboring" solution
+            #
+            if neighbor:
                 break
             cur_idx = (cur_idx + 1) % len(points)
-            if cur_idx == start_idx: # we went all the way round
+            # if we went all the way round and found nothing => call it quits
+            #
+            if cur_idx == start_idx:
                 break
 
+        # we went all the way and didn't find a better neighbor => we're at a local minimum
+        #
         if not neighbor:
-            break # we're at a local minimum
+            break
         cost = neighbor[0]
         point = neighbor[1]
         b = neighbor[2]
