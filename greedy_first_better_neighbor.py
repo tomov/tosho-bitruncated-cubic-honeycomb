@@ -25,16 +25,19 @@ def greedy(target, x_range, y_range, z_range, name):
     solution = Solution(target, x_range, y_range, z_range, randomize=True, prob=prob)
     print name, ': initial cost = ' + str(solution.cost)
 
-    then = datetime.datetime.now()
     points = solution.throats.keys()
+    all_idx = range(len(points))
+    random.shuffle(all_idx)
+
+    then = datetime.datetime.now()
+
     cur_idx = 0
     it = 0
-
     while True:
         neighbor = None
         start_idx = cur_idx
         while True:
-            point = points[cur_idx]
+            point = points[all_idx[cur_idx]]
             bits = solution.throats[point]
             for b in range(14):
                 adj = getAdj(point, b)
