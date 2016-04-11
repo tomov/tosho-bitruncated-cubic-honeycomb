@@ -25,6 +25,8 @@ def greedy(target, x_range, y_range, z_range, name):
     solution = Solution(target, x_range, y_range, z_range, randomize=True, prob=prob)
     print name, ': initial cost = ' + str(solution.cost)
 
+ #   return solution WTFFF TODO 
+
     # randomize the pores
     #
     points = solution.throats.keys()

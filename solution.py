@@ -7,6 +7,7 @@ from __future__ import division
 import random
 import json
 import math
+import numpy as np
 
 
 # Total number of lattice points in range
@@ -71,6 +72,8 @@ def getAllAdj(point):
         ret.append((x, new_y, z))
     for new_z in [z - 2, z + 2]:
         ret.append((x, y, new_z))
+
+    random.shuffle(ret, lambda: 0.2342) # TODO ARGHHH WTF
     return ret
 
 # Index of point in corresponding neighbor's adjacency list, for all neighbors.
@@ -240,12 +243,15 @@ class Solution():
         for n in neigh: # matlab starts from 1
             n[0] += 1
             n[1] += 1
-        with open("%scoords%s.csv" % (prefix, suffix), "w") as f:
+        coords_file = "%scoords%s.csv" % (prefix, suffix)
+        with open(coords_file, "w") as f:
             for point in coords:
                 f.write("%f,%f,%f\n" % (point[0], point[1], point[2]))
-        with open("%sneigh%s.csv" % (prefix, suffix), "w") as f:
+        neigh_file = "%sneigh%s.csv" % (prefix, suffix)
+        with open(neigh_file, "w") as f:
             for n in neigh:
                 f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
+        return coords_file, neigh_file
 
     # requires that ranges and target are initialized accordingly
     #
@@ -292,10 +298,21 @@ class Solution():
         self.z_range = z_range
         self.target = target
         if randomize:
-            for point, bits in self.throats.iteritems():
+            points = self.throats.keys()
+            all_idx = range(len(points))
+            random.shuffle(all_idx)
+            for idx in all_idx:
+                point = points[idx]
+                bits = self.throats[point]
+                bit_idxs = range(14)
+                random.shuffle(bit_idxs)
+                # WTF TODO WHYYYY THIS DOESN'T WORK
+                rand_bits = np.random.choice(range(14), 4, replace=False)
+           #     print getAllAdj((0, 0, 0))
                 for i in range(14):
                     if i < revAdjIdx[i] and random.random() < prob:
                         adj = getAdj(point, i)
+            #            print point, ' --> ', adj
                         if not isIn(adj, x_range, y_range, z_range):
                             continue
                         bits[i] = 1

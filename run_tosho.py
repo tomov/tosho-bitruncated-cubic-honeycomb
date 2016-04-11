@@ -1,5 +1,5 @@
 # Generates solutions for a given N and target distribution
-# Usage: python.py run_tosho.py [input filename] [output directory] [number of threads]
+# Usage: python run_tosho.py [input filename] [output directory] [number of threads]
 # Example usage: python run_tosho.py input.txt tosho_solutions 4
 #
 
@@ -9,6 +9,8 @@ import string
 
 from solution import *
 from greedy_first_better_neighbor import *
+#from archive.greedy_best_neighbor import *
+from merge_outs import *
 
 from multiprocessing import Process, Value
 
@@ -32,8 +34,9 @@ def infinite_greedy(thd):
         solution = greedy(target, x_range, y_range, z_range, "Thread #%d" % thd)
         prefix = "%s/" % output_dir
         suffix = "_N_%d_cost_%d_%s" % (poresN, solution.cost, genHash())
-        solution.exportForTosho(prefix, suffix)
+        coords_file, neigh_file = solution.exportForTosho(prefix, suffix)
         solutions_count.value += 1
+        # merge_outs(coords_file, neigh_file, 'conductance/sheeeiiiiit%s.csv' % suffix)
 
 if __name__ == '__main__':
     input_file = sys.argv[1]
