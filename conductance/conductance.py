@@ -6,6 +6,7 @@
 # Otherwise, it is treated as a directory and all .csv files from that directory and its subdirectories (!) are used as input files
 # The output for all files is appended (!) to the output file.
 #
+# WARNING: DOUBLE VERTICES IS WRONG!
 
 import math
 import sys

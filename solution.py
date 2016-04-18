@@ -73,7 +73,9 @@ def getAllAdj(point):
     for new_z in [z - 2, z + 2]:
         ret.append((x, y, new_z))
 
-    random.shuffle(ret, lambda: 0.2342) # TODO ARGHHH WTF
+    #random.shuffle(ret, lambda: 0.2342) # TODO ARGHHH WTF
+    #ret.reverse()
+    #print 'HERE BITCH'
     return ret
 
 # Index of point in corresponding neighbor's adjacency list, for all neighbors.
@@ -85,7 +87,10 @@ def getRevAdjIdx():
     ret = []
     for point in adj:
         adj_adj = getAllAdj(point)
-        ret.append(adj_adj.index((0, 0, 0)))
+        idx = adj_adj.index((0, 0, 0))
+        ret.append(idx)
+    for i in range(len(ret)):
+        assert ret[ret[i]] == i
     return ret
 
 revAdjIdx = getRevAdjIdx()
@@ -112,11 +117,12 @@ def getThroatsN(x_range, y_range, z_range):
     ret = 0
     for point, bits in throats.iteritems():
         for i in range(14):
-            if i < revAdjIdx[i]:
-                adj = getAdj(point, i)
-                if not isIn(adj, x_range, y_range, z_range):
-                    continue
-                ret += 1
+            adj = getAdj(point, i)
+            if point > adj:
+                continue
+            if not isIn(adj, x_range, y_range, z_range):
+                continue
+            ret += 1
     return ret
 
 def getRandomShuffleThroatIdxs(x_range, y_range, z_range):
@@ -221,26 +227,63 @@ class Solution():
         self.sanity()
         coords = []
         neigh = []
+        neigh_WTF = []
         pointIdx = dict()
         for point, bits in self.throats.iteritems():
             pointIdx[point] = len(coords)
             coords.append([point[0], point[1], point[2]])
+        WTF = dict()
         for point, bits in self.throats.iteritems():
             for i in range(14):
                 if i < revAdjIdx[i]:
                     adj = getAdj(point, i)
+                   # if point > adj:
+                   #     continue
                     if not isIn(adj, self.x_range, self.y_range, self.z_range):
                         continue
                     if bits[i]:
                         idxA = pointIdx[point]
                         idxB = pointIdx[adj]
-                        neigh.append([idxA, idxB, 0])
+                        if idxA < 0 or idxB < 0:
+                            print 'SHIT'
+                            print idxA, idxB
+                            assert False
+                        if (idxA, idxB) in WTF:
+                            continue
+                        WTF[(idxA, idxB)] = 1
+                        WTF[(idxB, idxA)] = 1
+                        neigh.append([idxA, idxB, 1])
+        for point, bits in self.throats.iteritems():
+            for i in range(14):
+                    adj = getAdj(point, i)
+                    #if point > adj:
+                    #    continue
+                    if not isIn(adj, self.x_range, self.y_range, self.z_range):
+                        continue
+                    if bits[i]:
+                        idxA = pointIdx[point]
+                        idxB = pointIdx[adj]
+                        assert WTF[(idxA, idxB)]
+                        assert WTF[(idxB, idxA)]
+        used = dict()
+        for shit, _ in WTF.iteritems():
+            if (shit[0], shit[1]) not in used:
+                neigh_WTF.append([shit[0], shit[1], 1])
+                used[(shit[0], shit[1])] = True
+                used[(shit[1], shit[0])] = True
+        print len(neigh)
+        print len(neigh_WTF)
+        print sum([i * self.hist[i] for i in range(15)]) / 2
         assert len(neigh) == sum([i * self.hist[i] for i in range(15)]) / 2
+        assert len(neigh_WTF) == sum([i * self.hist[i] for i in range(15)]) / 2
         for point in coords: # my coords are * 2 and from 0
             point[0] = point[0] / 2 + 100
             point[1] = point[1] / 2 + 100
             point[2] = point[2] / 2 + 100
         for n in neigh: # matlab starts from 1
+            n[0] += 1
+            n[1] += 1
+        for n in neigh_WTF: # matlab starts from 1
             n[0] += 1
             n[1] += 1
         coords_file = "%scoords%s.csv" % (prefix, suffix)
@@ -251,7 +294,11 @@ class Solution():
         with open(neigh_file, "w") as f:
             for n in neigh:
                 f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
-        return coords_file, neigh_file
+        neigh_WTF_file = "%sneigh%s_WTF.csv" % (prefix, suffix)
+        with open(neigh_WTF_file, "w") as f:
+            for n in neigh_WTF:
+                f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
+        return coords_file, neigh_file, neigh_WTF_file
 
     # requires that ranges and target are initialized accordingly
     #
@@ -275,10 +322,10 @@ class Solution():
                 n = [int(x) for x in line.split(",")]
                 pointA = points[n[0] - 1]
                 pointB = points[n[1] - 1]
+                assert pointA < pointB
                 for i in range(14):
                     adj = getAdj(pointA, i)
                     if adj == pointB:
-                        assert i < revAdjIdx[i]
                         self.throats[pointA][i] = 1
                         self.throats[adj][revAdjIdx[i]] = 1
                         break
@@ -308,11 +355,13 @@ class Solution():
                 random.shuffle(bit_idxs)
                 # WTF TODO WHYYYY THIS DOESN'T WORK
                 rand_bits = np.random.choice(range(14), 4, replace=False)
-           #     print getAllAdj((0, 0, 0))
+                print getAllAdj((0, 0, 0))
                 for i in range(14):
                     if i < revAdjIdx[i] and random.random() < prob:
                         adj = getAdj(point, i)
-            #            print point, ' --> ', adj
+                        #if point > adj:
+                        #    continue
+                        print point, ' --> ', adj
                         if not isIn(adj, x_range, y_range, z_range):
                             continue
                         bits[i] = 1

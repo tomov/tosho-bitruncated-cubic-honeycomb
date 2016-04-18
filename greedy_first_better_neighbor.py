@@ -25,7 +25,7 @@ def greedy(target, x_range, y_range, z_range, name):
     solution = Solution(target, x_range, y_range, z_range, randomize=True, prob=prob)
     print name, ': initial cost = ' + str(solution.cost)
 
- #   return solution WTFFF TODO 
+    return solution
 
     # randomize the pores
     #
@@ -87,14 +87,14 @@ def greedy(target, x_range, y_range, z_range, name):
         b = neighbor[2]
         value = neighbor[3]
 
-        #sanity = copy.deepcopy(solution) # uncomment for sanity
+        sanity = copy.deepcopy(solution) # uncomment for sanity
 
         solution.setAndRecalc(point, b, value)
         assert solution.cost == cost
 
-        #sanity.set(point, b, value) # uncomment for sanity
-        #sanity.recalc() # uncomment for sanity
-        #assert solution.isEqual(sanity) # uncomment for sanity
+        sanity.set(point, b, value) # uncomment for sanity
+        sanity.recalc() # uncomment for sanity
+        assert solution.isEqual(sanity) # uncomment for sanity
 
         it += 1
 

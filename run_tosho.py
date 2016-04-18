@@ -34,9 +34,10 @@ def infinite_greedy(thd):
         solution = greedy(target, x_range, y_range, z_range, "Thread #%d" % thd)
         prefix = "%s/" % output_dir
         suffix = "_N_%d_cost_%d_%s" % (poresN, solution.cost, genHash())
-        coords_file, neigh_file = solution.exportForTosho(prefix, suffix)
+        coords_file, neigh_file, neigh_WTF_file = solution.exportForTosho(prefix, suffix)
         solutions_count.value += 1
-        # merge_outs(coords_file, neigh_file, 'conductance/sheeeiiiiit%s.csv' % suffix)
+        merge_outs(coords_file, neigh_file, 'conductance/sheeeiiiiit.csv')
+        merge_outs(coords_file, neigh_WTF_file, 'conductance/fuuuckk.csv')
 
 if __name__ == '__main__':
     input_file = sys.argv[1]
