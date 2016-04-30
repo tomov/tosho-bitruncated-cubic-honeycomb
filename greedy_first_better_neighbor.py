@@ -22,7 +22,7 @@ def greedy(target, x_range, y_range, z_range, name):
     maxThroatsN = getThroatsN(x_range, y_range, z_range)
     prob = throatsN/maxThroatsN
 
-    solution = Solution(target, x_range, y_range, z_range, randomize=True, prob=prob)
+    solution = Solution(target, x_range, y_range, z_range, randomize=False, prob=prob)
     print name, ': initial cost = ' + str(solution.cost)
 
     # randomize the pores
