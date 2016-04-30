@@ -24,7 +24,9 @@ def merge_outs(coords_file, neigh_file, out_file):
             if l >= len(neigh):
                 z.extend([0, 0, 0])
             else:
-                z.extend([x.strip() for x in neigh[l].split(',')])
+                n = [x.strip() for x in neigh[l].split(',')]
+                n[2] = 1
+                z.extend(n)
             if l == 0:
                 z.extend([1, 0, 0, 1, 1, 1])
             else:

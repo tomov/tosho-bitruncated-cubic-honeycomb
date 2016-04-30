@@ -148,6 +148,15 @@ def calcHist(throatCns):
 def calcCost(hist, target):
     diffs = [hist[i] - target[i] for i in range(15)]
     return sum([d * d for d in diffs])
+
+def neighsAreUnique(neigh): # for sanity
+    used = dict()
+    for n in neigh:
+        if (n[0], n[1]) in used:
+            return False
+        used[(n[0], n[1])] = True
+        used[(n[1], n[0])] = True
+    return True
     
 class Solution():
     x_range = None
@@ -224,15 +233,17 @@ class Solution():
             coords.append([point[0], point[1], point[2]])
         for point, bits in self.throats.iteritems():
             for i in range(14):
-                if i < revAdjIdx[i]:
-                    adj = getAdj(point, i)
-                    if not isIn(adj, self.x_range, self.y_range, self.z_range):
-                        continue
-                    if bits[i]:
-                        idxA = pointIdx[point]
-                        idxB = pointIdx[adj]
+                adj = getAdj(point, i)
+                if not isIn(adj, self.x_range, self.y_range, self.z_range):
+                    continue
+                idxA = pointIdx[point]
+                idxB = pointIdx[adj]
+                if bits[i]:
+                    if idxA < idxB: # IMPORTANT -- otherwise tosho's thing breaks
                         neigh.append([idxA, idxB, 0])
+        neigh.sort() # IMPORTANT -- otherwise tosho's thing breaks
         assert len(neigh) == sum([i * self.hist[i] for i in range(15)]) / 2
+        assert neighsAreUnique(neigh)
         for point in coords: # my coords are * 2 and from 0
             point[0] = point[0] / 2 + 100
             point[1] = point[1] / 2 + 100

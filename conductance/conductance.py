@@ -172,7 +172,13 @@ def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
 
 def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVertices=False):
     vertices = coords[:]
-    edges = neigh[:]
+    # double edges since it's a non-directred graph
+    # note that this is different from adding reverse edges!
+    # so in the end, there are 4 edges between each pair of vertices:
+    # A -> B with capacity 1 and it's reverse with capacity 0, and
+    # B -> A with capacity 1 and it's reverse with capacity 0
+    #
+    edges = neigh[:] + [(e[1], e[0], e[2]) for e in neigh]
    
     # add source & sink
     #
@@ -180,14 +186,15 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVerti
     vertices.append((0, 0, 0, 0))
     sink = len(vertices)
     vertices.append((0, 0, 0, 0))
+    if do_print:
+        print 'souce = ', source,' sink = ', sink
     
     for idx in starting_pore_idxs:
         edges.append((source, idx, 0))
     for idx in ending_pore_idxs:
         edges.append((idx, sink, 0))
 
-    # add rev edges -- edge[i] is rev of edge[i + edges_n]
-    # so now each edge is directed
+    # add rev edges -- edge[i + edges_n] is rev of edge[i]
     #
     edges_n = len(edges)
     cap = [1] * len(edges)
@@ -198,7 +205,7 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVerti
         v = edges[idx][1]
         edges.append((v, u, 0))
         flow.append(0)
-        cap.append(1)
+        cap.append(0)
         rev.append(idx)
 
     # Make capacities to/from source/sink infinite
@@ -219,20 +226,27 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVerti
         vertices_n = len(vertices)
         for i in range(vertices_n):
             vertices.append(vertices[i])
-        for idx in range(edges_n): # make edges u_out -> v_in
+
+        for idx in range(edges_n): # make existing edges u_out -> v_in
             e = edges[idx]
             new_edge = (e[0] + vertices_n, e[1], e[2])
             edges[idx] = new_edge
+
             e = edges[idx + edges_n] # reverse edge
+            assert e[1] + vertices_n == new_edge[0]
+            assert e[0] == new_edge[1]
             new_edge = (e[0], e[1] + vertices_n, e[2])
             edges[idx + edges_n] = new_edge
+
         source += vertices_n # source is out-vertex
         for u in range(vertices_n): # add in-out edges
             v = u + vertices_n
+
             edges.append((u, v, 0))
             flow.append(0)
             cap.append(1)
             rev.append(len(edges))
+
             edges.append((v, u, 0)) # and reverse edge
             flow.append(0)
             cap.append(0)
@@ -279,7 +293,7 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVerti
                     visited[v] = True
                     prev[v] = u
                     prev_edge[v] = idx
-                    if u == sink:
+                    if v == sink:
                         if do_print:
                             print '                           SINK!'
                         foundPath = True
