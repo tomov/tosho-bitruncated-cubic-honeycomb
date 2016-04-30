@@ -277,16 +277,18 @@ class Solution():
         with open("%scoords%s.csv" % (prefix, suffix), "w") as f:
             for point in coords:
                 f.write("%f,%f,%f\n" % (point[0], point[1], point[2]))
-        with open("%sneigh%s_1.csv" % (prefix, suffix), "w") as f:
-            for n in neigh1:
-                f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
-        with open("%sneigh%s_2.csv" % (prefix, suffix), "w") as f:
-            for n in neigh2:
-                f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
-        with open("%sneigh%s_3.csv" % (prefix, suffix), "w") as f:
-            for n in neigh3:
-                f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
-        with open("%sneigh%s_4.csv" % (prefix, suffix), "w") as f:
+        # ONLY neigh 4 works TODO tosho figure out why the other variants don't work
+        #
+        #with open("%sneigh%s_1.csv" % (prefix, suffix), "w") as f:
+        #    for n in neigh1:
+        #        f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
+        #with open("%sneigh%s_2.csv" % (prefix, suffix), "w") as f:
+        #    for n in neigh2:
+        #        f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
+        #with open("%sneigh%s_3.csv" % (prefix, suffix), "w") as f:
+        #    for n in neigh3:
+        #        f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
+        with open("%sneigh%s.csv" % (prefix, suffix), "w") as f:
             for n in neigh4:
                 f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
 

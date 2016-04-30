@@ -95,7 +95,7 @@ def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
         g = G(throat, coords)
         l = ThTotLen(throat, coords)
         if do_print:
-            print 'throat ', idx1, idx2, l/g, l, g
+            print 'throat ', idx1, idx2, l, g, l/g
         if idx1 in adj:
             adj[idx1].append((idx2, l/g, l))
         else:
@@ -180,6 +180,8 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVerti
     vertices.append((0, 0, 0, 0))
     sink = len(vertices)
     vertices.append((0, 0, 0, 0))
+    if do_print:
+        print 'souce = ', source,' sink = ', sink
     
     for idx in starting_pore_idxs:
         edges.append((source, idx, 0))
@@ -279,7 +281,7 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVerti
                     visited[v] = True
                     prev[v] = u
                     prev_edge[v] = idx
-                    if u == sink:
+                    if v == sink:
                         if do_print:
                             print '                           SINK!'
                         foundPath = True
@@ -379,7 +381,7 @@ def solve(infile, outfile):
         left, right = getBoundaries(coords, direction=0)
         print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
 
-    edmondsKarp(coords, neigh, left, right, doubleVertices=False)
+    edmondsKarp(coords, neigh, left, right, doubleVertices=True)
 
     print 'Running dijkstra....'
     max_g, path = dijkstra(coords, neigh, left, right)
