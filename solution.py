@@ -148,6 +148,15 @@ def calcHist(throatCns):
 def calcCost(hist, target):
     diffs = [hist[i] - target[i] for i in range(15)]
     return sum([d * d for d in diffs])
+
+def neighsAreUnique(neigh): # for sanity
+    used = dict()
+    for n in neigh:
+        if (n[0], n[1]) in used:
+            return False
+        used[(n[0], n[1])] = True
+        used[(n[1], n[0])] = True
+    return True
     
 class Solution():
     x_range = None
@@ -217,34 +226,63 @@ class Solution():
     def exportForTosho(self, prefix = "", suffix = ""):
         self.sanity()
         coords = []
-        neigh = []
+        neigh1 = []
+        neigh2 = []
+        neigh3 = []
         pointIdx = dict()
         for point, bits in self.throats.iteritems():
             pointIdx[point] = len(coords)
             coords.append([point[0], point[1], point[2]])
+        used = dict()
         for point, bits in self.throats.iteritems():
             for i in range(14):
-                if i < revAdjIdx[i]:
-                    adj = getAdj(point, i)
-                    if not isIn(adj, self.x_range, self.y_range, self.z_range):
-                        continue
-                    if bits[i]:
-                        idxA = pointIdx[point]
-                        idxB = pointIdx[adj]
-                        neigh.append([idxA, idxB, 0])
-        assert len(neigh) == sum([i * self.hist[i] for i in range(15)]) / 2
+                adj = getAdj(point, i)
+                if not isIn(adj, self.x_range, self.y_range, self.z_range):
+                    continue
+                idxA = pointIdx[point]
+                idxB = pointIdx[adj]
+                if bits[i]:
+                    # neigh 1
+                    if i < revAdjIdx[i]:
+                        neigh1.append([idxA, idxB, 0])
+                    # neigh 2
+                    if (idxA, idxB) not in used:
+                        neigh2.append([idxA, idxB, 0])
+                        used[(idxA, idxB)] = 1
+                        used[(idxB, idxA)] = 1
+                    # neigh 3
+                    if idxA < idxB:
+                        neigh3.append([idxA, idxB, 0])
+        assert len(neigh1) == sum([i * self.hist[i] for i in range(15)]) / 2
+        assert len(neigh2) == len(neigh1)
+        assert len(neigh3) == len(neigh1)
+        assert neighsAreUnique(neigh1)
+        assert neighsAreUnique(neigh2)
+        assert neighsAreUnique(neigh3)
         for point in coords: # my coords are * 2 and from 0
             point[0] = point[0] / 2 + 100
             point[1] = point[1] / 2 + 100
             point[2] = point[2] / 2 + 100
-        for n in neigh: # matlab starts from 1
+        for n in neigh1: # matlab starts from 1
+            n[0] += 1
+            n[1] += 1
+        for n in neigh2: # matlab starts from 1
+            n[0] += 1
+            n[1] += 1
+        for n in neigh3: # matlab starts from 1
             n[0] += 1
             n[1] += 1
         with open("%scoords%s.csv" % (prefix, suffix), "w") as f:
             for point in coords:
                 f.write("%f,%f,%f\n" % (point[0], point[1], point[2]))
-        with open("%sneigh%s.csv" % (prefix, suffix), "w") as f:
-            for n in neigh:
+        with open("%sneigh%s_1.csv" % (prefix, suffix), "w") as f:
+            for n in neigh1:
+                f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
+        with open("%sneigh%s_2.csv" % (prefix, suffix), "w") as f:
+            for n in neigh2:
+                f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
+        with open("%sneigh%s_3.csv" % (prefix, suffix), "w") as f:
+            for n in neigh3:
                 f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
 
     # requires that ranges and target are initialized accordingly
