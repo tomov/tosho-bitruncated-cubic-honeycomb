@@ -22,7 +22,7 @@ n # number of pores along axis
 permeability # as computed by the complicated formulas
 """
 
-do_print = False
+do_print = True
 
 def ThTotLen(throat, coords):
     pore1 = coords[throat[0]]
@@ -379,7 +379,7 @@ def solve(infile, outfile):
         left, right = getBoundaries(coords, direction=0)
         print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
 
-    edmondsKarp(coords, neigh, left, right, doubleVertices=True)
+    edmondsKarp(coords, neigh, left, right, doubleVertices=False)
 
     print 'Running dijkstra....'
     max_g, path = dijkstra(coords, neigh, left, right)

@@ -229,6 +229,7 @@ class Solution():
         neigh1 = []
         neigh2 = []
         neigh3 = []
+        neigh4 = []
         pointIdx = dict()
         for point, bits in self.throats.iteritems():
             pointIdx[point] = len(coords)
@@ -272,6 +273,7 @@ class Solution():
         for n in neigh3: # matlab starts from 1
             n[0] += 1
             n[1] += 1
+        neigh4 = sorted(neigh3)
         with open("%scoords%s.csv" % (prefix, suffix), "w") as f:
             for point in coords:
                 f.write("%f,%f,%f\n" % (point[0], point[1], point[2]))
@@ -283,6 +285,9 @@ class Solution():
                 f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
         with open("%sneigh%s_3.csv" % (prefix, suffix), "w") as f:
             for n in neigh3:
+                f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
+        with open("%sneigh%s_4.csv" % (prefix, suffix), "w") as f:
+            for n in neigh4:
                 f.write("%d,%d,%d\n" % (n[0], n[1], n[2]))
 
     # requires that ranges and target are initialized accordingly
