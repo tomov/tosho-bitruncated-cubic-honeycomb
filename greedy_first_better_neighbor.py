@@ -96,7 +96,7 @@ def greedy(target, x_range, y_range, z_range, name):
 
         it += 1
 
-        if it % 10000 == 0:
+        if it % 1000 == 0:
             print '\n', name, 'iter = ', it, ' cost = ', solution.cost, ' secs per iter = %.10lf' % ((datetime.datetime.now() - then).total_seconds() / (it + 1))
             print name, 'target = ', target
             print name, 'solution = ', solution.hist

@@ -19,8 +19,15 @@ def getN(x_range, y_range, z_range):
     ret += ((xs - 1) // 2 + 1) * ((ys - 1) // 2 + 1) * ((zs - 1) // 2 + 1)
     return ret
 
+# normalize histogram so that the sum is 1
+#
+def normalize(hist):
+    s = sum(hist)
+    hist = [h / s for h in hist]
+    return hist
+
 # truncate / extend a histogram to 14 buckets
-# assumes sum is 1
+# assumes normalized i.e. sum is 1
 #
 def truncate(hist):
     if len(hist) < 15:
@@ -37,6 +44,13 @@ def truncateAndScale(hist, x_range, y_range, z_range):
     hist = [int(round(h * n)) for h in hist]
     diff = n - sum(hist)
     hist[14] += diff
+    # sometimes we get an off-by-one because of the rounding
+    # especially if hist[14] was small to begin with
+    # in that case, simply ignore the off-by-one
+    #
+    if hist[14] < 0:
+        assert hist[14] >= -1
+        hist[14] = 0
     assert hist[14] >= 0
     return hist
 
