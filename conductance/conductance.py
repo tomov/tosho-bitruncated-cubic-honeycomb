@@ -414,9 +414,9 @@ def getBoundaries(coords, direction):
             ending.append(i)
     return starting, ending
 
-def solve(infile, outfile, doubleVertices):
+def solve(infile, outfile):
     coords, neigh, left, right, ucs, n, permeability = readCSV(infile)
-    print '---------- solving', infile, '--------------'
+    print '\n\n--------------------- solving', infile, '---------------------------\n\n'
     print 'N = ', n
     print 'UCS = ', ucs
     print 'Perm = ', permeability
@@ -429,16 +429,25 @@ def solve(infile, outfile, doubleVertices):
         left, right = getBoundaries(coords, direction=0)
         print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
 
-    # Find the critical pores / throats
+    # Find the critical throats
     #
-    max_flow, critical = edmondsKarp(coords, neigh, left, right, doubleVertices=doubleVertices)
-    assert len(critical) == max_flow
-    print 'max flow = ', max_flow
-    print 'critical edges = ', critical
+    print '\nFinding critical throats...'
+    max_flow_throats, critical_throats = edmondsKarp(coords, neigh, left, right, doubleVertices=False)
+    assert len(critical_throats) == max_flow_throats
+    print 'max flow (throats) = ', max_flow_throats
+    print 'critical edges (throats) = ', critical_throats
+
+    # Find the critical pores
+    #
+    print '\nFinding critical pores...'
+    max_flow_pores, critical_pores = edmondsKarp(coords, neigh, left, right, doubleVertices=True)
+    assert len(critical_pores) == max_flow_pores
+    print 'max flow (pores) = ', max_flow_pores
+    print 'critical edges (pores) = ', critical_pores
 
     # Find the path of max conductance... or preferential flow path... TODO figure out which one
     #
-    print 'Running dijkstra....'
+    print '\nRunning dijkstra....'
     max_g, path = dijkstra(coords, neigh, left, right)
     print 'MAX g = ', max_g
     print 'Path = ', path
@@ -448,26 +457,22 @@ def solve(infile, outfile, doubleVertices):
     # TODO sanity path calc make sure it's same as max g
 
     with open(outfile, 'a') as f:
-        res = [infile, permeability, max_g, max_g / (n * ucs), ' '.join([str(v + 1) for v in path]), max_flow]
-        if doubleVertices:
-            res.append(' '.join([str(e[0] + 1) for e in critical]))
-        else:
-            res.append(' '.join(['%d-%d' % (e[0], e[1]) for e in critical]))
+        res = [infile, permeability, max_g, max_g / (n * ucs), ' '.join([str(v + 1) for v in path])]
+        res.append(len(critical_throats))
+        res.append(' '.join(['%d-%d' % (e[0] + 1, e[1] + 1) for e in critical_throats]))
+        res.append(len(critical_pores))
+        res.append(' '.join([str(e[0] + 1) for e in critical_pores]))
+
         f.write(','.join([str(x) for x in res]) + '\n')
 
 if __name__ == '__main__':
     infile = sys.argv[1]
     outfile = sys.argv[2]
-    if len(sys.argv) > 3:
-        pores_or_throats = sys.argv[3]
-        doubleVertices = 'pore' in pores_or_throats.lower()
-    else:
-        doubleVertices = False
 
     if infile.lower().endswith('.csv'):
         # single file
         #
-        solve(infile, outfile, doubleVertices)
+        solve(infile, outfile)
     else:
         # directory of files
         #
@@ -476,4 +481,4 @@ if __name__ == '__main__':
             print '\n============ EXPLORING DIRECTORY', path, '=================\n'
             for filename in files:
                 if filename.lower().endswith('.csv'):
-                    solve(os.path.join(path, filename), outfile, doubleVertices)
+                    solve(os.path.join(path, filename), outfile)
