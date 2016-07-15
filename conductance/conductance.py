@@ -5,7 +5,6 @@
 # If the input filename ends with '.csv', it is read as the only input file
 # Otherwise, it is treated as a directory and all .csv files from that directory and its subdirectories (!) are used as input files
 # The output for all files is appended (!) to the output file.
-# Optionally, add the word "pores" as a third parameter to find critical pores instead of critical throats.
 #
 
 import math
