@@ -5,6 +5,7 @@
 # If the input filename ends with '.csv', it is read as the only input file
 # Otherwise, it is treated as a directory and all .csv files from that directory and its subdirectories (!) are used as input files
 # The output for all files is appended (!) to the output file.
+# Optionally, add the word "pores" as a third parameter to find critical pores instead of critical throats.
 #
 
 import math
@@ -90,70 +91,70 @@ def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     #
     adj = dict()
     for throat in neigh:
-        idx1 = throat[0]
-        idx2 = throat[1]
+        u = throat[0]
+        v = throat[1]
         g = G(throat, coords)
         l = ThTotLen(throat, coords)
         if do_print:
-            print 'throat ', idx1, idx2, l/g, l, g
-        if idx1 in adj:
-            adj[idx1].append((idx2, l/g, l))
+            print 'throat ', u, v, l/g, l, g
+        if u in adj:
+            adj[u].append((v, l/g, l))
         else:
-            adj[idx1] = [(idx2, l/g, l)]
-        if idx2 in adj:
-            adj[idx2].append((idx1, l/g, l))
+            adj[u] = [(v, l/g, l)]
+        if v in adj:
+            adj[v].append((u, l/g, l))
         else:
-            adj[idx2] = [(idx1, l/g, l)]
+            adj[v] = [(u, l/g, l)]
 
     # Dijkstra
     # minimizing sum of l/g, keeping track of total l for finding total g in the end
     #
     pq = []
-    [heap.heappush(pq, (0, 0, idx)) for idx in starting_pore_idxs]
+    [heap.heappush(pq, (0, 0, u)) for u in starting_pore_idxs]
 
     if do_print:
         print 'starting: '
-        for idx in starting_pore_idxs:
-            print idx, ' = ', coords[idx]
+        for u in starting_pore_idxs:
+            print u, ' = ', coords[u]
 
     visited = set()
     prev = dict()
     dist = dict()
-    for idx in starting_pore_idxs:
-        dist[idx] = (0, 0)
-        prev[idx] = None
+    for u in starting_pore_idxs:
+        dist[u] = (0, 0)
+        prev[u] = None
 
     while len(pq) > 0:
         top = heap.heappop(pq)
-        lg, l, idx = top
-        if idx in visited:
+        lg, l, u = top
+        if u in visited:
             continue
-        visited.add(idx)
-        #print 'in ', idx, ' with l/g = ', lg, ', l = ', l, ', g = ', l/lg if lg != 0 else 'inf'
-        assert dist[idx] == (lg, l)
-        if idx in adj:
-            for neighbor, delta_lg, delta_l in adj[idx]:
+        visited.add(u)
+        #print 'in ', u, ' with l/g = ', lg, ', l = ', l, ', g = ', l/lg if lg != 0 else 'inf'
+        assert dist[u] == (lg, l)
+        if u in adj:
+            for v, delta_lg, delta_l in adj[u]:
                 new_lg = lg + delta_lg
                 new_l = l + delta_l
-         #       print '        to ', neighbor, ' with l/g = ', new_lg, ', l = ', new_l, ', g = ', new_l/new_lg
-                if neighbor not in dist or dist[neighbor][0] > new_lg:
-                    dist[neighbor] = (new_lg, new_l)
-                    prev[neighbor] = idx
-                    heap.heappush(pq, (new_lg, new_l, neighbor))
-          #          print '                  add to heap! ', idx, ' --> ', neighbor, ' ', (new_lg, new_l, neighbor)
+         #       print '        to ', v, ' with l/g = ', new_lg, ', l = ', new_l, ', g = ', new_l/new_lg
+                if v not in dist or dist[v][0] > new_lg:
+                    dist[v] = (new_lg, new_l)
+                    prev[v] = u 
+                    heap.heappush(pq, (new_lg, new_l, v))
+          #          print '                  add to heap! ', idx, ' --> ', v, ' ', (new_lg, new_l, v)
    
     # Find max g
     #
     gs = []
-    for idx in ending_pore_idxs:
-        if idx not in dist:
+    for u in ending_pore_idxs:
+        if u not in dist:
             continue
         if do_print:
-            print 'ending ', idx, ' -> ', dist[idx], ' prev = ', prev[idx]
-        lg = dist[idx][0]
-        l = dist[idx][1]
+            print 'ending ', u, ' -> ', dist[u], ' prev = ', prev[u]
+        lg = dist[u][0]
+        l = dist[u][1]
         g = l / lg
-        gs.append((g, idx))
+        gs.append((g, u))
         if do_print:
             print '               g = ', g
 
@@ -161,11 +162,11 @@ def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
 
     # Find its path
     #
-    idx = max(gs)[1]
+    u = max(gs)[1]
     path = []
-    while idx is not None:
-        path.append(idx)
-        idx = prev[idx]
+    while u is not None:
+        path.append(u)
+        u = prev[u]
     path = list(reversed(path))
 
     return max_g, path
@@ -239,6 +240,7 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVerti
             edges[idx + edges_n] = new_edge
 
         source += vertices_n # source is out-vertex
+
         for u in range(vertices_n): # add in-out edges
             v = u + vertices_n
 
@@ -262,12 +264,9 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVerti
         else:
             adj[u] = [idx]
 
-    while True:
-        if do_print:
-            print '----------- iteration ----------------'
-
-        # BFS
-        #
+    # BFS
+    #
+    def BFS():
         foundPath = False
         prev = [None] * len(vertices)
         prev_edge = [None] * len(vertices)
@@ -298,6 +297,15 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVerti
                             print '                           SINK!'
                         foundPath = True
                         break
+        return foundPath, prev, prev_edge, visited
+
+    # Keep finding augmenting paths
+    #
+    while True:
+        if do_print:
+            print '----------- iteration ----------------'
+
+        foundPath, prev, prev_edge, _ = BFS()
         if not foundPath:
             # no more augmeting paths
             #
@@ -349,17 +357,45 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVerti
             if do_print:
                 print '              augment :  edge ', idx, ' = ', u, v, ' flow = ', flow[idx], ' r flow (for ', ridx, ') = ', flow[ridx]
 
-    max_flow = 0
+    # calculate the max flow
+    #
+    max_flow_source = 0
+    max_flow_sink = 0
     for idx in range(len(edges)):
         if edges[idx][0] == source:
             if do_print:
-                print '    max flow ', idx, ' (', source, edges[idx][1], ') += ', flow[idx]
-            max_flow += flow[idx]
+                print '    max flow source ', idx, ' (', source, edges[idx][1], ') += ', flow[idx]
+            max_flow_source += flow[idx]
+        if edges[idx][1] == sink:
+            if do_print:
+                print '    max flow sink ', idx, ' (', edges[idx][1], sink, ') += ', flow[idx]
+            max_flow_sink += flow[idx]
 
-    # TODO sanity that sum(sink) == sum(source)
+    # find the critical throats
+    #
+    foundPath, _, _, visited = BFS()
+    critical = []
+    assert not foundPath
+    for idx in range(len(edges)):
+        u = edges[idx][0]
+        v = edges[idx][1]
+        cf = cap[idx] - flow[idx]
+        if (u, v) in critical or (v, u) in critical:
+            continue
+        if doubleVertices and v != u + vertices_n:
+            # we're looking at critical pores => only consider the in-out edges
+            #
+            continue
+        if cf == 0 and visited[u] != visited[v]:
+            critical.append((u, v))
+            if do_print:
+                print '                     critical edge = ', u, v
+    print 'Total = ', len(critical), ' critical'
 
-    print 'MAX FLOW = ', max_flow
-    return max_flow 
+    print 'MAX FLOW source = ', max_flow_source, ' sink (should be same) = ', max_flow_sink
+    assert max_flow_source == max_flow_sink
+    assert len(critical) == max_flow_source
+    return max_flow_source, critical
 
 # In case they're not given
 # direction = 0 => X, 1 => Y, 2 => Z
@@ -378,7 +414,7 @@ def getBoundaries(coords, direction):
             ending.append(i)
     return starting, ending
 
-def solve(infile, outfile):
+def solve(infile, outfile, doubleVertices):
     coords, neigh, left, right, ucs, n, permeability = readCSV(infile)
     print '---------- solving', infile, '--------------'
     print 'N = ', n
@@ -393,8 +429,15 @@ def solve(infile, outfile):
         left, right = getBoundaries(coords, direction=0)
         print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
 
-    edmondsKarp(coords, neigh, left, right, doubleVertices=True)
+    # Find the critical pores / throats
+    #
+    max_flow, critical = edmondsKarp(coords, neigh, left, right, doubleVertices=doubleVertices)
+    assert len(critical) == max_flow
+    print 'max flow = ', max_flow
+    print 'critical edges = ', critical
 
+    # Find the path of max conductance... or preferential flow path... TODO figure out which one
+    #
     print 'Running dijkstra....'
     max_g, path = dijkstra(coords, neigh, left, right)
     print 'MAX g = ', max_g
@@ -405,17 +448,26 @@ def solve(infile, outfile):
     # TODO sanity path calc make sure it's same as max g
 
     with open(outfile, 'a') as f:
-        res = [infile, permeability, max_g, max_g / (n * ucs), ' '.join([str(p + 1) for p in path])]
+        res = [infile, permeability, max_g, max_g / (n * ucs), ' '.join([str(v + 1) for v in path]), max_flow]
+        if doubleVertices:
+            res.append(' '.join([str(e[0] + 1) for e in critical]))
+        else:
+            res.append(' '.join(['%d-%d' % (e[0], e[1]) for e in critical]))
         f.write(','.join([str(x) for x in res]) + '\n')
 
 if __name__ == '__main__':
     infile = sys.argv[1]
     outfile = sys.argv[2]
+    if len(sys.argv) > 3:
+        pores_or_throats = sys.argv[3]
+        doubleVertices = 'pore' in pores_or_throats.lower()
+    else:
+        doubleVertices = False
 
     if infile.lower().endswith('.csv'):
         # single file
         #
-        solve(infile, outfile)
+        solve(infile, outfile, doubleVertices)
     else:
         # directory of files
         #
@@ -424,4 +476,4 @@ if __name__ == '__main__':
             print '\n============ EXPLORING DIRECTORY', path, '=================\n'
             for filename in files:
                 if filename.lower().endswith('.csv'):
-                    solve(os.path.join(path, filename), outfile)
+                    solve(os.path.join(path, filename), outfile, doubleVertices)
