@@ -85,7 +85,7 @@ def readCSV(filename):
 
     return coords, neigh, left, right, ucs, n, permeability
 
-def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
+def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs, conductance=True):
     # Build adjacency lists
     #
     adj = dict()
@@ -109,6 +109,23 @@ def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     # minimizing sum of l/g, keeping track of total l for finding total g in the end
     #
     pq = []
+
+    # l/g   vs.   l
+    # 
+    # l1/g1 + l2/g2 = l/g  ==> a1 + a2 = a
+    # => maximize g/l ....
+    # BUT... REALLY minimize 1 / g  === a / l = a / (l1 + l2)
+    # suppose we have a1 and a2
+    # right now, if a1 < a2, we take a1
+    # ... but... what if a1 / l1 > a2 / a2?
+    # it could happen if l1 < l2
+    # ....so, for pair (a1, l1) and (a2, l2), we know for sure that
+    # (a1, l1) < (a2, l2)   (i.e. pick first one)
+    # if a1 < a2 AND l1 > l2
+    # ==> sort by (l/g, l)  => pick pair with smallest l/g (i.e. most likely)
+    #     and largest l i.e. least likely => as they go up, we only want to look at pairs if
+    #     their l/g goes strictly up (> the cur one) and their l goes strictly down (< cur one)
+    #
     [heap.heappush(pq, (0, 0, u)) for u in starting_pore_idxs]
 
     if do_print:
@@ -119,15 +136,20 @@ def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     visited = set()
     prev = dict()
     dist = dict()
+    all_pairs = dict()
     for u in starting_pore_idxs:
         dist[u] = (0, 0)
         prev[u] = None
+        all_pairs[u] = [(0, 0)]
 
     while len(pq) > 0:
         top = heap.heappop(pq)
         lg, l, u = top
-        if u in visited:
-            continue
+        if conductnace:
+            if u in visited and lg 
+        else:
+            if u in visited:
+                continue
         visited.add(u)
         #print 'in ', u, ' with l/g = ', lg, ', l = ', l, ', g = ', l/lg if lg != 0 else 'inf'
         assert dist[u] == (lg, l)
