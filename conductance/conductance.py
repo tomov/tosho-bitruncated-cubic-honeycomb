@@ -85,6 +85,52 @@ def readCSV(filename):
 
     return coords, neigh, left, right, ucs, n, permeability
 
+# From https://en.wikipedia.org/wiki/Disjoint-set_data_structure
+#
+def unionFind(coords, neigh, starting_pore_idxs, ending_pore_idxs):
+    parent = dict()
+    rank = dict()
+
+    def makeSet(u):
+        parent[u] = u
+        rank[u] = 0
+
+    def find(u):
+        if parent[u] != u:
+            parent[u] = find(parent[u])
+        return parent[u]
+
+    def union(u, v):
+        uRoot = find(u)
+        vRoot = find(v)
+        if uRoot == vRoot:
+            return
+
+        if rank[uRoot] < rank[vRoot]:
+            parent[uRoot] = vRoot
+        elif rank[uRoot] > rank[vRoot]:
+            parent[vRoot] = uRoot
+        else:
+            parent[vRoot] = uRoot
+            rank[uRoot] += 1
+
+    for u in range(len(coords)):
+        makeSet(u)
+
+    for e in neigh:
+        u = e[0]
+        v = e[1]
+        union(u, v)
+
+    sets_on_left_boundary = set()
+    for u in starting_pore_idxs:
+        sets_on_left_boundary.add(find(u))
+    sets_on_right_boundary = set()
+    for u in ending_pore_idxs:
+        sets_on_right_boundary.add(find(u))
+    paths = sets_on_left_boundary.intersection(sets_on_right_boundary)
+    print 'Sets on left boundary: ', len(sets_on_left_boundary), ', right boundary: ', len(sets_on_right_boundary), ', both: ', len(paths)
+
 def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     # Build adjacency lists
     #
@@ -428,41 +474,43 @@ def solve(infile, outfile):
         left, right = getBoundaries(coords, direction=0)
         print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
 
+    unionFind(coords, neigh, left, right)
+
     # Find the critical throats
     #
-    print '\nFinding critical throats...'
-    max_flow_throats, critical_throats = edmondsKarp(coords, neigh, left, right, doubleVertices=False)
-    assert len(critical_throats) == max_flow_throats
-    print 'max flow (throats) = ', max_flow_throats
-    print 'critical edges (throats) = ', critical_throats
+    #print '\nFinding critical throats...'
+    #max_flow_throats, critical_throats = edmondsKarp(coords, neigh, left, right, doubleVertices=False)
+    #assert len(critical_throats) == max_flow_throats
+    #print 'max flow (throats) = ', max_flow_throats
+    #print 'critical edges (throats) = ', critical_throats
 
-    # Find the critical pores
-    #
-    print '\nFinding critical pores...'
-    max_flow_pores, critical_pores = edmondsKarp(coords, neigh, left, right, doubleVertices=True)
-    assert len(critical_pores) == max_flow_pores
-    print 'max flow (pores) = ', max_flow_pores
-    print 'critical edges (pores) = ', critical_pores
+    ## Find the critical pores
+    ##
+    #print '\nFinding critical pores...'
+    #max_flow_pores, critical_pores = edmondsKarp(coords, neigh, left, right, doubleVertices=True)
+    #assert len(critical_pores) == max_flow_pores
+    #print 'max flow (pores) = ', max_flow_pores
+    #print 'critical edges (pores) = ', critical_pores
 
     # Find the path of max conductance... or preferential flow path... TODO figure out which one
     #
-    print '\nRunning dijkstra....'
-    max_g, path = dijkstra(coords, neigh, left, right)
-    print 'MAX g = ', max_g
-    print 'Path = ', path
-    assert path[0] in left
-    assert path[-1] in right
+    #print '\nRunning dijkstra....'
+    #max_g, path = dijkstra(coords, neigh, left, right)
+    #print 'MAX g = ', max_g
+    #print 'Path = ', path
+    #assert path[0] in left
+    #assert path[-1] in right
 
     # TODO sanity path calc make sure it's same as max g
 
-    with open(outfile, 'a') as f:
-        res = [infile, permeability, max_g, max_g / (n * ucs), ' '.join([str(v + 1) for v in path])]
-        res.append(len(critical_throats))
-        res.append(' '.join(['%d-%d' % (e[0] + 1, e[1] + 1) for e in critical_throats]))
-        res.append(len(critical_pores))
-        res.append(' '.join([str(e[0] + 1) for e in critical_pores]))
+    #with open(outfile, 'a') as f:
+    #    res = [infile, permeability, max_g, max_g / (n * ucs), ' '.join([str(v + 1) for v in path])]
+    #    res.append(len(critical_throats))
+    #    res.append(' '.join(['%d-%d' % (e[0] + 1, e[1] + 1) for e in critical_throats]))
+    #    res.append(len(critical_pores))
+    #    res.append(' '.join([str(e[0] + 1) for e in critical_pores]))
 
-        f.write(','.join([str(x) for x in res]) + '\n')
+    #    f.write(','.join([str(x) for x in res]) + '\n')
 
 if __name__ == '__main__':
     infile = sys.argv[1]
