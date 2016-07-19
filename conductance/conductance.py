@@ -1,10 +1,11 @@
 # Find the path with maximum conductance from left to right boundary
-# usage: python conductance.py [input file/dir] [output file]
-# example #1: python conductance.py input.csv output.csv
-# example #2: python conductance.py datadir output.csv
+# usage: python conductance.py [input file/dir] [output file] [direction]
+# example #1: python conductance.py input.csv output.csv 0
+# example #2: python conductance.py datadir output.csv 0
 # If the input filename ends with '.csv', it is read as the only input file
 # Otherwise, it is treated as a directory and all .csv files from that directory and its subdirectories (!) are used as input files
 # The output for all files is appended (!) to the output file.
+# direction is 0 = X, 1 = Y, or 2 = Z. If not specified, defaults to 0 (X)
 #
 
 import math
@@ -15,6 +16,7 @@ import heapq as heap
 """
 coords # array of pores = (pore X, pore Y, pore Z, pore radius in m)
 neigh  # array of throats = (throat pore 1 index in coords, throat pore 2, throat radius in m)
+qs # array of flowrates for each throat = (Qx, QXtotal, Qy, QYtotal, Qz, QZtotal -- flowrates in each direction); should be same length as neigh
 left # idxs of pores on left boundary
 right # idxs of pores on right boundary
 ucs # size of single cell (???)
@@ -50,8 +52,8 @@ def G(throat, coords):
 
 def readCSV(filename):
     # Row format:
-    #  0 1 2  3     4     5   6  7  8  9  10  11 
-    # [X,Y,Z,Pore1,Pore2,ThR,Pr,LB,RB,UCS,N,Perm] 
+    #  0 1 2  3     4     5   6  7  8  9  10  11  12  13       14  15       16  17
+    # [X,Y,Z,Pore1,Pore2,ThR,Pr,LB,RB,UCS,N,Perm, Qx, QXtotal, Qy, QYtotal, Qz, QZtotal] 
     #
     coords = []
     neigh = []
@@ -60,6 +62,7 @@ def readCSV(filename):
     ucs = None
     n = None
     permeability = None
+    qs = []
     with open(filename, 'r') as f:
         for line in f:
             line = line.split(',')
@@ -70,6 +73,11 @@ def readCSV(filename):
             if line[3] != '' and line[3] != '0':
                 throat = (int(line[3]) - 1, int(line[4]) - 1, float(line[5]) * 1e-6)
                 neigh.append(throat)
+                # Optional Q (flowrate) values at the end, one for each throat
+                #
+                if len(line) > 12 and line[12] != '':
+                    q = (float(line[12]), float(line[13]), float(line[14]), float(line[15]), float(line[16]), float(line[17]))
+                    qs.append(q)
             if line[7] != '' and line[7] != '0':
                 idx = int(line[7]) - 1
                 left.append(idx)
@@ -83,11 +91,13 @@ def readCSV(filename):
             if line[11] != '' and line[11] != '0':
                 permeability = float(line[11])
 
-    return coords, neigh, left, right, ucs, n, permeability
+    assert len(qs) == 0 or len(qs) == len(neigh), "Lengths should be equal: " + str(len(qs)) + " vs. " + str(len(neigh))
+
+    return coords, neigh, left, right, ucs, n, permeability, qs
 
 # From https://en.wikipedia.org/wiki/Disjoint-set_data_structure
 #
-def unionFind(coords, neigh, starting_pore_idxs, ending_pore_idxs):
+def unionFind(coords, neigh, qs, starting_pore_idxs, ending_pore_idxs):
     parent = dict()
     rank = dict()
 
@@ -146,10 +156,67 @@ def unionFind(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     # Print output
     #
     print 'Sets on left boundary: ', len(sets_on_left_boundary), ', right boundary: ', len(sets_on_right_boundary), ', both: ', len(paths)
-    print 'Sizes of sets on left boundary = ', ','.join([str(sizes[s]) for s in sets_on_left_boundary])
-    print 'Sizes of sets on right boundary = ', ','.join([str(sizes[s]) for s in sets_on_right_boundary])
+    print '# pores in sets on left boundary = ', ','.join([str(sizes[s]) for s in sets_on_left_boundary])
+    print '# pores in sets on right boundary = ', ','.join([str(sizes[s]) for s in sets_on_right_boundary])
     if len(paths) > 0:
-        print 'Sizes of sets connecting both = ', ','.join([str(sizes[s]) for s in paths])
+        print '# pores in sets connecting both boundaries = ', ','.join([str(sizes[s]) for s in paths])
+
+    qLeftTotal = 0
+    qRightTotal = 0
+    pore_counts = []
+    throat_counts = []
+    q_lefts = []
+    q_rights = []
+    for s in paths:
+        print '   Looking at set with', sizes[s], 'pores'
+        qLeft = 0
+        qRight = 0
+        thCount = 0
+        qLeftTotal = 0
+        qRightTotal = 0
+        for i in range(len(neigh)):
+            u = neigh[i][0]
+            v = neigh[i][1]
+            q = abs(qs[i][direction * 2])
+            qTotal = qs[i][direction * 2 + 1]
+
+            # which boundary is the throat lying on, if at all?
+            boundary = None
+            if u in starting_pore_idxs:
+                boundary = 'left'
+            elif v in starting_pore_idxs:
+                boundary = 'left'
+            elif u in ending_pore_idxs:
+                boundary = 'right'
+            elif v in ending_pore_idxs:
+                boundary = 'right'
+
+            if boundary is None:
+                continue
+
+            # measure total Q on each boundary
+            if boundary == 'left':
+                qLeftTotal += q
+            else:
+                assert boundary == 'right'
+                qRightTotal += q
+
+            # measure Q for current set
+            if find(u) == s:
+                if boundary == 'left':
+                    qLeft += q
+                else:
+                    assert boundary == 'right'
+                    qRight += q
+                thCount += 1
+                #print '          edge #%d: %d -> %d' % (i, u, v), ', Qs : ', (q, qTotal)
+        print '           qLeft = ', qLeft, ' qRight = ', qRight, ' throat count = ', thCount, ' qLeftTotal = ', qLeftTotal, ' qRightTotal = ', qRightTotal
+        pore_counts.append(sizes[s])
+        throat_counts.append(thCount)
+        q_lefts.append(qLeft)
+        q_rights.append(qRight)
+
+    return qLeftTotal, qRightTotal, pore_counts, throat_counts, q_lefts, q_rights
 
 def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     # Build adjacency lists
@@ -479,8 +546,8 @@ def getBoundaries(coords, direction):
             ending.append(i)
     return starting, ending
 
-def solve(infile, outfile):
-    coords, neigh, left, right, ucs, n, permeability = readCSV(infile)
+def solve(infile, outfile, direction):
+    coords, neigh, left, right, ucs, n, permeability, qs = readCSV(infile)
     print '\n\n--------------------- solving', infile, '---------------------------\n\n'
     print 'N = ', n
     print 'UCS = ', ucs
@@ -491,10 +558,19 @@ def solve(infile, outfile):
     print '# pores on right boundary = ', len(right)
 
     if len(left) == 0 or len(right) == 0:
-        left, right = getBoundaries(coords, direction=0)
+        left, right = getBoundaries(coords, direction=direction)
         print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
 
-    unionFind(coords, neigh, left, right)
+    qLeftTotal, qRightTotal, pore_counts, throat_counts, q_lefts, q_rights = unionFind(coords, neigh, qs, left, right)
+
+    with open(outfile, 'a') as f:
+        res = [infile, permeability, qLeftTotal, qRightTotal]
+        res.append(' '.join([str(x) for x in pore_counts]))
+        res.append(' '.join([str(x) for x in throat_counts]))
+        res.append(' '.join([str(x) for x in q_lefts]))
+        res.append(' '.join([str(x) for x in q_rights]))
+
+        f.write(','.join([str(x) for x in res]) + '\n')
 
     # Find the critical throats
     #
@@ -535,11 +611,16 @@ def solve(infile, outfile):
 if __name__ == '__main__':
     infile = sys.argv[1]
     outfile = sys.argv[2]
+    if len(sys.argv) > 3:
+        direction = int(sys.argv[3])
+    else:
+        direction = 0 # default direction is X
+    print 'Direction = ', ('X', 'Y', 'Z')[direction]
 
     if infile.lower().endswith('.csv'):
         # single file
         #
-        solve(infile, outfile)
+        solve(infile, outfile, direction)
     else:
         # directory of files
         #
@@ -548,4 +629,4 @@ if __name__ == '__main__':
             print '\n============ EXPLORING DIRECTORY', path, '=================\n'
             for filename in files:
                 if filename.lower().endswith('.csv'):
-                    solve(os.path.join(path, filename), outfile)
+                    solve(os.path.join(path, filename), outfile, direction)
