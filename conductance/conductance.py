@@ -114,14 +114,27 @@ def unionFind(coords, neigh, starting_pore_idxs, ending_pore_idxs):
             parent[vRoot] = uRoot
             rank[uRoot] += 1
 
+    # Find all sets
+    #
     for u in range(len(coords)):
         makeSet(u)
-
     for e in neigh:
         u = e[0]
         v = e[1]
         union(u, v)
 
+    # Find set sizes
+    #
+    sizes = dict()
+    for u in range(len(coords)):
+        s = find(u)
+        if s in sizes:
+            sizes[s] += 1
+        else:
+            sizes[s] = 1
+
+    # Find which sets are on the borders and which sets connect them
+    #
     sets_on_left_boundary = set()
     for u in starting_pore_idxs:
         sets_on_left_boundary.add(find(u))
@@ -129,7 +142,14 @@ def unionFind(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     for u in ending_pore_idxs:
         sets_on_right_boundary.add(find(u))
     paths = sets_on_left_boundary.intersection(sets_on_right_boundary)
+
+    # Print output
+    #
     print 'Sets on left boundary: ', len(sets_on_left_boundary), ', right boundary: ', len(sets_on_right_boundary), ', both: ', len(paths)
+    print 'Sizes of sets on left boundary = ', ','.join([str(sizes[s]) for s in sets_on_left_boundary])
+    print 'Sizes of sets on right boundary = ', ','.join([str(sizes[s]) for s in sets_on_right_boundary])
+    if len(paths) > 0:
+        print 'Sizes of sets connecting both = ', ','.join([str(sizes[s]) for s in paths])
 
 def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     # Build adjacency lists
