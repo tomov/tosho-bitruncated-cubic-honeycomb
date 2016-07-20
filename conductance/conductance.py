@@ -190,7 +190,9 @@ def unionFind(coords, neigh, qs, starting_pore_idxs, ending_pore_idxs):
                 boundary = 'right'
             elif v in ending_pore_idxs:
                 boundary = 'right'
-
+        
+            if find(u) == s:
+                thCount += 1
             if boundary is None:
                 continue
 
@@ -208,7 +210,6 @@ def unionFind(coords, neigh, qs, starting_pore_idxs, ending_pore_idxs):
                 else:
                     assert boundary == 'right'
                     qRight += q
-                thCount += 1
                 #print '          edge #%d: %d -> %d' % (i, u, v), ', Qs : ', (q, qTotal)
         print '           qLeft = ', qLeft, ' qRight = ', qRight, ' throat count = ', thCount, ' qLeftTotal = ', qLeftTotal, ' qRightTotal = ', qRightTotal
         pore_counts.append(sizes[s])
