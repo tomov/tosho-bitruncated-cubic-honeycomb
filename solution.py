@@ -48,8 +48,9 @@ def truncateAndScale(hist, x_range, y_range, z_range):
     # especially if hist[14] was small to begin with
     # in that case, simply ignore the off-by-one
     #
+    print 'histogram: ', hist
     if hist[14] < 0:
-        assert hist[14] >= -1
+        assert hist[14] >= -2
         hist[14] = 0
     assert hist[14] >= 0
     return hist
