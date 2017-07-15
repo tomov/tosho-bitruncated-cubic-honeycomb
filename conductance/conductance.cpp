@@ -6,6 +6,8 @@
 #include <vector>
 #include <utility>
 #include <boost/graph/push_relabel_max_flow.hpp>
+#include <boost/graph/edmonds_karp_max_flow.hpp>
+#include <boost/graph/boykov_kolmogorov_max_flow.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/read_dimacs.hpp>
 
@@ -164,21 +166,22 @@ void getBoundaries(const std::vector<Pore> &pores, int direction, std::vector<in
 {
     starting.clear();
     ending.clear();
-    std::vector<double> min_b(pores.size()), max_b(pores.size()), left_b(pores.size()), right_b(pores.size());
+    std::vector<double> left_b(pores.size()), right_b(pores.size());
+    double min_b = pores[0][direction], max_b = pores[0][direction];
     for (int i = 0; i < pores.size(); i++)
     {
-        min_b[i] = std::min(min_b[i], pores[i][direction]);
-        max_b[i] = std::max(max_b[i], pores[i][direction]);
+        min_b = std::min(min_b, pores[i][direction]);
+        max_b = std::max(max_b, pores[i][direction]);
         left_b[i] = pores[i][direction] - pores[i].r;
         right_b[i] = pores[i][direction] + pores[i].r;
     }
     for (int i = 0; i < pores.size(); i++)
     {
-        if (left_b[i] <= min_b[i])
+        if (left_b[i] <= min_b)
         {
             starting.push_back(i);
         }
-        if (right_b[i] >= max_b[i])
+        if (right_b[i] >= max_b)
         {
             ending.push_back(i);
         }
@@ -280,7 +283,11 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
 
     typedef adjacency_list_traits<vecS, vecS, directedS> Traits;
     typedef adjacency_list<vecS, vecS, directedS, 
-        property<vertex_name_t, std::string>,
+        property<vertex_name_t, std::string,
+            property<vertex_index_t, long,
+                  property<vertex_color_t, boost::default_color_type,
+                          property<vertex_distance_t, long,
+                                    property<vertex_predecessor_t, Traits::edge_descriptor > > > > >,
         property<edge_capacity_t, int,
             property<edge_residual_capacity_t, int,
                 property<edge_reverse_t, Traits::edge_descriptor> > >
@@ -314,25 +321,37 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
     // Add capacities & reverse edges
     for (int i = 0; i < edges.size(); i++)
     {
-        put(edge_capacity, g, edge_descriptors[i], cap[i]);
+        //put(edge_capacity, g, edge_descriptors[i], cap[i]);
+        capacity[edge_descriptors[i]] = cap[i];
+        residual_capacity[edge_descriptors[i]] = cap[i];
         reverse[edge_descriptors[i]] = edge_descriptors[rev[i]];
     }
 
-    // Fun max flow
-    flow = push_relabel_max_flow(g, s, t);
- 
-    // Print outputs
-    std::cout << "c  The total flow:" << std::endl;
-    std::cout << "s " << flow << std::endl << std::endl;
-
-    std::cout << "c flow values:" << std::endl;
     graph_traits<Graph>::vertex_iterator u_iter, u_end;
     graph_traits<Graph>::out_edge_iterator ei, e_end;
     for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
       for (tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei)
         if (capacity[*ei] > 0)
           std::cout << "f " << *u_iter << " " << target(*ei, g) << " " 
+                    << capacity[*ei] << ", " << residual_capacity[*ei] << std::endl;
+
+    // Run max flow
+    //flow = push_relabel_max_flow(g, s, t);
+    //flow = edmonds_karp_max_flow(g, s, t);
+    flow = boykov_kolmogorov_max_flow(g, s, t);
+ 
+    // Print outputs
+    std::cout << "c  The total flow:" << std::endl;
+    std::cout << "s " << flow << std::endl << std::endl;
+
+    std::cout << "c flow values:" << std::endl;
+    /*
+    for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
+      for (tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei)
+        if (capacity[*ei] > 0)
+          std::cout << "f " << *u_iter << " " << target(*ei, g) << " " 
                     << (capacity[*ei] - residual_capacity[*ei]) << std::endl;
+                    */
 
     return flow;
 }
@@ -349,7 +368,7 @@ int main(int argc, char* argv[])
     printf("solving %s\n", filename);
     printf("N = %d\n", N);
     printf("UCS = %lf\n", ucs);
-    printf("perm = %lf\n", permeability);
+    printf("perm = %e\n", permeability);
     printf("# pores = %d\n", (int)pores.size());
     printf("# throats = %d\n", (int)throats.size());
     printf("# pores on left boundary = %d\n", (int)left.size());
@@ -363,46 +382,5 @@ int main(int argc, char* argv[])
 
     maxFlow(left, right, false /*doubleVertices*/);
 
-    /*
-  std::cout<<" shit1\n";
-  typedef adjacency_list_traits<listS, listS, directedS> Traits;
-  typedef adjacency_list<listS, listS, directedS, 
-    property<vertex_name_t, std::string>,
-    property<edge_capacity_t, long,
-      property<edge_residual_capacity_t, long,
-    property<edge_reverse_t, Traits::edge_descriptor> > >
-  > Graph;
-
-  Graph g;
-  long flow;
-  std::cout<<" shit2\n";
-
-  property_map<Graph, edge_capacity_t>::type 
-    capacity = get(edge_capacity, g);
-  property_map<Graph, edge_reverse_t>::type 
-    rev = get(edge_reverse, g);
-  property_map<Graph, edge_residual_capacity_t>::type 
-    residual_capacity = get(edge_residual_capacity, g);
-
-  std::cout<<" shit3\n";
-
-  Traits::vertex_descriptor s, t;
-  read_dimacs_max_flow(g, capacity, rev, s, t);
-
-  std::cout<<" shit4\n";
-  flow = push_relabel_max_flow(g, s, t);
-
-  std::cout << "c  The total flow:" << std::endl;
-  std::cout << "s " << flow << std::endl << std::endl;
-
-  std::cout << "c flow values:" << std::endl;
-  graph_traits<Graph>::vertex_iterator u_iter, u_end;
-  graph_traits<Graph>::out_edge_iterator ei, e_end;
-  for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
-    for (tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei)
-      if (capacity[*ei] > 0)
-        std::cout << "f " << *u_iter << " " << target(*ei, g) << " " 
-                  << (capacity[*ei] - residual_capacity[*ei]) << std::endl;
-                  */
-  return 0;
+    return 0;
 }
