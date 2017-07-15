@@ -329,29 +329,32 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
 
     graph_traits<Graph>::vertex_iterator u_iter, u_end;
     graph_traits<Graph>::out_edge_iterator ei, e_end;
-    for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
-      for (tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei)
-        if (capacity[*ei] > 0)
-          std::cout << "f " << *u_iter << " " << target(*ei, g) << " " 
-                    << capacity[*ei] << ", " << residual_capacity[*ei] << std::endl;
+    if (DEBUG)
+    {
+        for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
+          for (tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei)
+            if (capacity[*ei] > 0)
+              std::cout << "f " << *u_iter << " " << target(*ei, g) << " " 
+                        << capacity[*ei] << ", " << residual_capacity[*ei] << std::endl;
+    }
 
     // Run max flow
-    //flow = push_relabel_max_flow(g, s, t);
+    flow = push_relabel_max_flow(g, s, t);
     //flow = edmonds_karp_max_flow(g, s, t);
-    flow = boykov_kolmogorov_max_flow(g, s, t);
- 
-    // Print outputs
-    std::cout << "c  The total flow:" << std::endl;
-    std::cout << "s " << flow << std::endl << std::endl;
+    //flow = boykov_kolmogorov_max_flow(g, s, t);
 
-    std::cout << "c flow values:" << std::endl;
-    /*
-    for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
-      for (tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei)
-        if (capacity[*ei] > 0)
-          std::cout << "f " << *u_iter << " " << target(*ei, g) << " " 
-                    << (capacity[*ei] - residual_capacity[*ei]) << std::endl;
-                    */
+    // Print output
+    std::cout << "The total flow: " << flow << std::endl;
+
+    if (DEBUG)
+    {
+        std::cout << "c flow values:" << std::endl;
+        for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
+          for (tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei)
+            if (capacity[*ei] > 0)
+              std::cout << "f " << *u_iter << " " << target(*ei, g) << " " 
+                        << (capacity[*ei] - residual_capacity[*ei]) << std::endl;
+    }
 
     return flow;
 }
