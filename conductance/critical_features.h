@@ -625,25 +625,29 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
     std::cout<<"\n";
 
     // Mark extra CPs for removal (randomly)
+    // Only if we actually have net more CPs
     //
     std::vector<bool> removed(net.pores.size());
-    for (int cn = 0; cn <= MAX_CN; cn++)
+    if (std::accumulate(hist.begin(), hist.end(), 0) > std::accumulate(target.begin(), target.end(), 0))
     {
-        int to_remove = hist[cn] - target[cn];
-        if (to_remove <= 0)
+        for (int cn = 0; cn <= MAX_CN; cn++)
         {
-            continue;
-        }
+            int to_remove = hist[cn] - target[cn];
+            if (to_remove <= 0)
+            {
+                continue;
+            }
 
-        std::vector<int> temp = cps[cn];
-        assert(temp.size() == hist[cn]);
-        std::random_shuffle(temp.begin(), temp.end());
+            std::vector<int> temp = cps[cn];
+            assert(temp.size() == hist[cn]);
+            std::random_shuffle(temp.begin(), temp.end());
 
-        for (int i = 0; i < to_remove; i++)
-        {
-            int p = temp[i];
-            removed[p] = unif_rand() < prob;
-            if (DEBUG) std::cout<<" remove "<<p<<" (cn = "<<cns[p]<<"); really? "<<removed[p]<<"\n";
+            for (int i = 0; i < to_remove; i++)
+            {
+                int p = temp[i];
+                removed[p] = unif_rand() < prob;
+                if (DEBUG) std::cout<<" remove "<<p<<" (cn = "<<cns[p]<<"); really? "<<removed[p]<<"\n";
+            }
         }
     }
 

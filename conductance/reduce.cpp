@@ -1,5 +1,7 @@
+// Keep removing critical pores until we match a target critical pore coordination number histogram & critical throat count
 //
 // Usage: ./reduce [input file / directory] [coordination # file] [output file / directory] [fraction of pores to remove on each iteration] [how many terminal iterations]
+// 
 // Ex: ./reduce merged/merged_N_20.csv cp_cns.txt reduced/merged_N_20.reduced.csv 0.5 2
 // Ex: ./reduce merged cp_cns.txt reduced 0.5 2
 // Ex: ./reduce reduced/merged_N_20.reduced.csv cp_cns.txt /dev/null 0.5 2
