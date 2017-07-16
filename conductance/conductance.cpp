@@ -274,9 +274,9 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices, 
 
     // Double verts TODO
     //
+    int verts_n = verts.size();
     if (doubleVertices)
     {
-        int verts_n = verts.size();
         for (int i = 0; i < verts_n; i++)
         {
             verts.push_back(verts[i]);
@@ -392,8 +392,8 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices, 
     // Run max flow
     auto start = std::chrono::steady_clock::now();
 
-    flow = push_relabel_max_flow(g, s, t);
-    //flow = edmonds_karp_max_flow(g, s, t);
+    //flow = push_relabel_max_flow(g, s, t);
+    flow = edmonds_karp_max_flow(g, s, t);
     //flow = boykov_kolmogorov_max_flow(g, s, t);
 
     auto end = std::chrono::steady_clock::now();
@@ -415,34 +415,39 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices, 
 
     // Find the critical edges (throats / pores)
     //
-    
-    // First, make capacity = residual capacity for all edges
-    for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
-    {
-        for (tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei)
-        {
-            //std::cout<<*u_iter<<" "<<target(*ei, g)<<": "<<capacity[*ei]<<", "<<residual_capacity[*ei]<<std::endl;
-    //        capacity[*ei] = residual_capacity[*ei];
-        }
-    }
-
-    // Run Edmonds Karp on residual network -- should have 0 flow and should also
-    // tell us where the BFS ended
 	std::vector<default_color_type> color(num_vertices(g));
 	std::vector<Traits::edge_descriptor> pred(num_vertices(g));
-    //int zero_flow = edmonds_karp_max_flow(g, s, t, capacity, residual_capacity, reverse, &color[0], &pred[0]);
-    //assert(zero_flow == 0);
 
     boost::queue<Traits::vertex_descriptor> Q;
     breadth_first_search(detail::residual_graph(g, residual_capacity), s, Q,
          make_bfs_visitor(record_edge_predecessors(&pred[0], on_tree_edge())),
          &color[0]);
 
+    critical.clear();
     for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
     {
         std::cout<<*u_iter<<": color "<<color[*u_iter]<<", pred "<<pred[*u_iter]<<std::endl;
+        for (tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei)
+        {
+            int u = *u_iter;
+            int v = target(*ei, g);
+            int cf = residual_capacity[*ei];
+            if (find(critical.begin(), critical.end(), Edge(u, v)) != critical.end() || find(critical.begin(), critical.end(), Edge(v, u)) != critical.end())
+            {
+                continue;
+            }
+            if (doubleVertices && v != u + verts_n)
+            {
+                continue;
+            }
+            if (cf == 0 && color[u] != color[v])
+            {
+                critical.push_back(Edge(u, v));
+                std::cout<<"             critical edge "<<u<<" "<<v<<std::endl;
+            }
+        }
     }
-
+    assert(critical.size() == flow);
 
     return flow;
 }
