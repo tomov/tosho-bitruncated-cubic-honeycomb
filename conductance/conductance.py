@@ -1,7 +1,7 @@
 # Find the path with maximum conductance from left to right boundary
-# usage: python conductance.py [input file/dir] [output file]
-# example #1: python conductance.py input.csv output.csv
-# example #2: python conductance.py datadir output.csv
+# usage: python conductance.py [input file/dir] [output file] [direction]
+# example #1: python conductance.py input.csv output.csv 0
+# example #2: python conductance.py datadir output.csv 1
 # If the input filename ends with '.csv', it is read as the only input file
 # Otherwise, it is treated as a directory and all .csv files from that directory and its subdirectories (!) are used as input files
 # The output for all files is appended (!) to the output file.
@@ -414,7 +414,7 @@ def getBoundaries(coords, direction):
             ending.append(i)
     return starting, ending
 
-def solve(infile, outfile):
+def solve(infile, outfile, direction):
     coords, neigh, left, right, ucs, n, permeability = readCSV(infile)
     print '\n\n--------------------- solving', infile, '---------------------------\n\n'
     print 'N = ', n
@@ -426,7 +426,7 @@ def solve(infile, outfile):
     print '# pores on right boundary = ', len(right)
 
     if len(left) == 0 or len(right) == 0:
-        left, right = getBoundaries(coords, direction=0)
+        left, right = getBoundaries(coords, direction=direction)
         print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
 
     # Find the critical throats
@@ -470,11 +470,12 @@ def solve(infile, outfile):
 if __name__ == '__main__':
     infile = sys.argv[1]
     outfile = sys.argv[2]
+    direction = int(sys.argv[3])
 
     if infile.lower().endswith('.csv'):
         # single file
         #
-        solve(infile, outfile)
+        solve(infile, outfile, direction)
     else:
         # directory of files
         #
@@ -483,4 +484,4 @@ if __name__ == '__main__':
             print '\n============ EXPLORING DIRECTORY', path, '=================\n'
             for filename in files:
                 if filename.lower().endswith('.csv'):
-                    solve(os.path.join(path, filename), outfile)
+                    solve(os.path.join(path, filename), outfile, direction)
