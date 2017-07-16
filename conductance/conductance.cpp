@@ -8,6 +8,8 @@
 #include <vector>
 #include <utility>
 #include <chrono>
+#include <cmath>
+#include <iomanip>
 #include <boost/graph/push_relabel_max_flow.hpp>
 #include <boost/graph/edmonds_karp_max_flow.hpp>
 #include <boost/graph/boykov_kolmogorov_max_flow.hpp>
@@ -15,6 +17,7 @@
 #include <boost/graph/read_dimacs.hpp>
 
 const bool DEBUG = false;
+const int MAX_CN = 14;
 
 void replace(std::string& line, char what, char with)
 {
@@ -482,15 +485,15 @@ int main(int argc, char* argv[])
 
     // Critical throats
     //
-    std::vector<Edge> criticalThroats;
-    int ct = maxFlow(net, left, right, false /*doubleVertices*/, criticalThroats);
-    std::cout<<"Critical throats (count = "<<ct<<") = [";
-    for (auto it : criticalThroats)
-    {
-        std::cout<<"("<<it.first<<", "<<it.second<<"), ";
-    }
-    std::cout<<"]\n\n";
-
+//    std::vector<Edge> criticalThroats;
+//    int ct = maxFlow(net, left, right, false /*doubleVertices*/, criticalThroats);
+//    std::cout<<"Critical throats (count = "<<ct<<") = [";
+//    for (auto it : criticalThroats)
+//    {
+//        std::cout<<"("<<it.first<<", "<<it.second<<"), ";
+//    }
+//    std::cout<<"]\n\n";
+//
     // Critical pores
     //
     std::vector<Edge> criticalPores;
@@ -501,6 +504,108 @@ int main(int argc, char* argv[])
         std::cout<<"("<<it.first<<", "<<it.second<<"), ";
     }
     std::cout<<"]\n\n";
+
+    //
+    // Remove critical pores until reaching a given target histogram
+    //
+  
+    // Define target CP coordination #s
+    //
+    std::vector<int> cp_cns({2, 3, 4, 5, 9, 9, 10, 12, 14, 14}); // target CP coordination #'s
+    std::vector<int> target(MAX_CN + 1); // target CP coordination # histogram
+    for (auto cn : cp_cns)
+    {
+        target[cn]++;
+    }
+
+    // Get all coordination #s
+    //
+    std::vector<int> cns(net.pores.size());
+    for (auto throat : net.throats)
+    {
+        cns[throat.p1]++;
+        cns[throat.p2]++;
+    }
+
+    // Find CP coordination #s
+    //
+    std::vector<int> hist(MAX_CN + 1); // CP coordination # histogram
+    for (auto it : criticalPores)
+    {
+        cp = it.first;
+        hist[cns[cp]]++;
+    }
+
+    std::cout<<"CP CN hist:            ";
+    for (int cn = 0; cn <= MAX_CN; cn++)
+    {
+        std::cout<<std::setw(3)<<hist[cn]<<" ";
+    }
+    std::cout<<"\n";
+    std::cout<<"target CP CN hist:     ";
+    for (int cn = 0; cn <= MAX_CN; cn++)
+    {
+        std::cout<<std::setw(3)<<target[cn]<<" ";
+    }
+    std::cout<<"\n";
+
+
+    // Modify target histogram so it's a subset of the actual histogram
+    //
+    srand(time(NULL));
+    for (int cn = 0; cn <= MAX_CN; cn++)
+    {
+        if (DEBUG) std::cout<<cn<<": "<<hist[cn]<<" vs. "<<target[cn]<<"\n";
+        // As long as there are more CPs with the given CN in the target distribution,
+        // keep reassigning them to different CNs randomly (closer CNs are preferred)
+        //
+        while (hist[cn] < target[cn])
+        {
+            bool done = false;
+            // Must make sure to reassign to a new CN that is feasible
+            //
+            do
+            {
+                std::vector<double> cn_weights(MAX_CN + 1);
+                int sum = 0;
+                if (DEBUG) std::cout<<" weights for "<<cn<<":\n";
+                for (int i = 0; i <= MAX_CN; i++)
+                {
+                    cn_weights[i] = (i == cn) ? 0 : 1.0 / ((i - cn) * (i - cn));
+                    sum += cn_weights[i];
+                    if (DEBUG) std::cout<<"      "<<i<<" -> "<<cn_weights[i]<<"\n";
+                }
+
+                double r = sum * ((double) rand() / (RAND_MAX));
+                int new_cn = -1;
+                for (int i = 0; i <= MAX_CN; i++)
+                {
+                    if (r < cn_weights[i])
+                    {
+                        new_cn = i;
+                        break;
+                    }
+                    r -= cn_weights[i];
+                }
+                assert(new_cn != -1);
+                if (DEBUG) std::cout<<" new cn = "<<new_cn<<"\n";
+                if (hist[new_cn] >= target[new_cn] + 1)
+                {
+                    target[cn]--;
+                    target[new_cn]++;
+                    done = true;
+                    if (DEBUG) std::cout<<"                WORKS!\n";
+                }
+            } while (!done);
+        }
+    }
+
+    std::cout<<"new target CP CN hist: ";
+    for (int cn = 0; cn <= MAX_CN; cn++)
+    {
+        std::cout<<std::setw(3)<<target[cn]<<" ";
+    }
+    std::cout<<"\n";
 
     return 0;
 }
