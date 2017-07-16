@@ -454,53 +454,12 @@ int maxFlow(const Network &net, const std::vector<int> &left, const std::vector<
 
 
 
-
-
-
-
-int main(int argc, char* argv[])
+Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, const std::vector<int> &right, const std::vector<int> &cp_cns)
 {
-    using namespace boost;
-
-    int direction = 0;
-    const char *infile = argv[1];
-
-    std::vector<int> left, right;
-    Network net = readCSV(infile, left, right);
-
-    printf("solving %s\n", infile);
-    printf("N = %d\n", net.n);
-    printf("UCS = %lf\n", net.ucs);
-    printf("perm = %e\n", net.permeability);
-    printf("# pores = %d\n", (int)net.pores.size());
-    printf("# throats = %d\n", (int)net.throats.size());
-    printf("# pores on left boundary = %d\n", (int)left.size());
-    printf("# pores on right boundary = %d\n", (int)right.size());
-
-    // Get boundary pores, if none were provided
-    //
-    if (left.size() == 0 || right.size() == 0)
-    {
-        getBoundaries(net, direction, left, right);
-        printf("Computing boundaries: # left = %d, # right = %d\n", (int)left.size(), (int)right.size());
-    }
-
-    int flow;
-    // Critical throats
-    //
-//    std::vector<Edge> criticalThroats;
-//    flow = maxFlow(net, left, right, false /*doubleVertices*/, criticalThroats);
-//    std::cout<<"Critical throats (count = "<<ct<<") = [";
-//    for (auto it : criticalThroats)
-//    {
-//        std::cout<<"("<<it.first<<", "<<it.second<<"), ";
-//    }
-//    std::cout<<"]\n\n";
-//
-    // Critical pores
+    // find current critical pores
     //
     std::vector<Edge> criticalPores;
-    flow = maxFlow(net, left, right, true /*doubleVertices*/, criticalPores);
+    int flow = maxFlow(net, left, right, true /*doubleVertices*/, criticalPores);
     std::cout<<"Critical pores (count = "<<flow<<") = [";
     for (auto it : criticalPores)
     {
@@ -508,13 +467,8 @@ int main(int argc, char* argv[])
     }
     std::cout<<"]\n\n";
 
-    //
-    // Remove critical pores until reaching a given target histogram
-    //
-  
     // Define target CP coordination #s
     //
-    std::vector<int> cp_cns({2, 3, 4, 5, 9, 9, 10, 12, 14, 14}); // target CP coordination #'s
     std::vector<int> target(MAX_CN + 1); // target CP coordination # histogram
     for (auto cn : cp_cns)
     {
@@ -672,6 +626,66 @@ int main(int argc, char* argv[])
         std::cout<<std::setw(3)<<new_hist[cn]<<" ";
     }
     std::cout<<"\n";
+
+    return new_net;
+}
+
+
+
+
+int main(int argc, char* argv[])
+{
+    using namespace boost;
+
+    int direction = 0;
+    const char *infile = argv[1];
+
+    std::vector<int> left, right;
+    Network net = readCSV(infile, left, right);
+
+    printf("solving %s\n", infile);
+    printf("N = %d\n", net.n);
+    printf("UCS = %lf\n", net.ucs);
+    printf("perm = %e\n", net.permeability);
+    printf("# pores = %d\n", (int)net.pores.size());
+    printf("# throats = %d\n", (int)net.throats.size());
+    printf("# pores on left boundary = %d\n", (int)left.size());
+    printf("# pores on right boundary = %d\n", (int)right.size());
+
+    // Get boundary pores, if none were provided
+    //
+    if (left.size() == 0 || right.size() == 0)
+    {
+        getBoundaries(net, direction, left, right);
+        printf("Computing boundaries: # left = %d, # right = %d\n", (int)left.size(), (int)right.size());
+    }
+
+    int flow;
+    // Critical throats
+    //
+//    std::vector<Edge> criticalThroats;
+//    flow = maxFlow(net, left, right, false /*doubleVertices*/, criticalThroats);
+//    std::cout<<"Critical throats (count = "<<ct<<") = [";
+//    for (auto it : criticalThroats)
+//    {
+//        std::cout<<"("<<it.first<<", "<<it.second<<"), ";
+//    }
+//    std::cout<<"]\n\n";
+//
+//    // Critical pores
+//    //
+//    std::vector<Edge> criticalPores;
+//    flow = maxFlow(net, left, right, true /*doubleVertices*/, criticalPores);
+//    std::cout<<"Critical pores (count = "<<flow<<") = [";
+//    for (auto it : criticalPores)
+//    {
+//        std::cout<<"("<<it.first<<", "<<it.second<<"), ";
+//    }
+//    std::cout<<"]\n\n";
+
+    // Remove critical pores until reaching a given target histogram
+    //
+    Network new_net = fitCriticalPoreCNs(net, left, right, {2, 3, 4, 5, 9, 9, 10, 12, 14, 14});
 
     return 0;
 }
