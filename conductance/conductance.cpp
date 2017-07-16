@@ -456,6 +456,8 @@ int maxFlow(const Network &net, const std::vector<int> &left, const std::vector<
 
 
 
+
+
 int main(int argc, char* argv[])
 {
     using namespace boost;
@@ -483,10 +485,11 @@ int main(int argc, char* argv[])
         printf("Computing boundaries: # left = %d, # right = %d\n", (int)left.size(), (int)right.size());
     }
 
+    int flow;
     // Critical throats
     //
 //    std::vector<Edge> criticalThroats;
-//    int ct = maxFlow(net, left, right, false /*doubleVertices*/, criticalThroats);
+//    flow = maxFlow(net, left, right, false /*doubleVertices*/, criticalThroats);
 //    std::cout<<"Critical throats (count = "<<ct<<") = [";
 //    for (auto it : criticalThroats)
 //    {
@@ -497,8 +500,8 @@ int main(int argc, char* argv[])
     // Critical pores
     //
     std::vector<Edge> criticalPores;
-    int cp = maxFlow(net, left, right, true /*doubleVertices*/, criticalPores);
-    std::cout<<"Critical pores (count = "<<cp<<") = [";
+    flow = maxFlow(net, left, right, true /*doubleVertices*/, criticalPores);
+    std::cout<<"Critical pores (count = "<<flow<<") = [";
     for (auto it : criticalPores)
     {
         std::cout<<"("<<it.first<<", "<<it.second<<"), ";
@@ -530,10 +533,12 @@ int main(int argc, char* argv[])
     // Find CP coordination #s
     //
     std::vector<int> hist(MAX_CN + 1); // CP coordination # histogram
+    std::vector<std::vector<int> > cps(MAX_CN + 1); // the actual CPs
     for (auto it : criticalPores)
     {
-        cp = it.first;
+        int cp = it.first;
         hist[cns[cp]]++;
+        cps[cns[cp]].push_back(cp);
     }
 
     std::cout<<"CP CN hist:            ";
@@ -604,6 +609,67 @@ int main(int argc, char* argv[])
     for (int cn = 0; cn <= MAX_CN; cn++)
     {
         std::cout<<std::setw(3)<<target[cn]<<" ";
+    }
+    std::cout<<"\n";
+
+    // Mark extra CPs for removal (randomly)
+    //
+    std::vector<bool> removed(net.pores.size());
+    for (int cn = 0; cn <= MAX_CN; cn++)
+    {
+        int to_remove = hist[cn] - target[cn];
+        assert(to_remove >= 0);
+
+        std::vector<int> temp = cps[cn];
+        assert(temp.size() == hist[cn]);
+        std::random_shuffle(temp.begin(), temp.end());
+
+        for (int i = 0; i < to_remove; i++)
+        {
+            int p = temp[i];
+            removed[p] = true;
+            if (DEBUG) std::cout<<" remove "<<p<<" (cn = "<<cns[p]<<")\n";
+        }
+    }
+
+    // Create new network with the removed CPs disconnected
+    //
+    std::vector<Throat> new_throats;
+    for (auto throat : net.throats)
+    {
+        if (!removed[throat.p1] && !removed[throat.p2])
+        {
+            new_throats.push_back(throat);
+        }
+    }
+
+    Network new_net = net;
+    new_net.throats = new_throats;
+    std::cout<<"new net has "<<new_net.throats.size()<<" throats\n";
+
+    // Find critical pores in new net
+    //
+    std::vector<Edge> newCriticalPores;
+    flow = maxFlow(new_net, left, right, true /*doubleVertices*/, newCriticalPores);
+    std::cout<<"New critical pores (count = "<<flow<<") = [";
+    for (auto it : newCriticalPores)
+    {
+        std::cout<<"("<<it.first<<", "<<it.second<<"), ";
+    }
+    std::cout<<"]\n\n";
+
+    // Find new histogram
+    std::vector<int> new_hist(MAX_CN + 1); // CP coordination # histogram
+    for (auto it : newCriticalPores)
+    {
+        int cp = it.first;
+        new_hist[cns[cp]]++;
+    }
+
+    std::cout<<"new CP CN hist:        ";
+    for (int cn = 0; cn <= MAX_CN; cn++)
+    {
+        std::cout<<std::setw(3)<<new_hist[cn]<<" ";
     }
     std::cout<<"\n";
 
