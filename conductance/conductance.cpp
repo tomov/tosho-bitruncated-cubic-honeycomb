@@ -189,9 +189,19 @@ void getBoundaries(const std::vector<Pore> &pores, int direction, std::vector<in
     }
 }
 
-int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
+typedef std::pair<int, int> Edge;
+
+using namespace boost;
+
+template <class Graph, class ResCapMap>
+filtered_graph<Graph, is_residual_edge<ResCapMap> >
+residual_graph(Graph& g, ResCapMap residual_capacity) {
+  return filtered_graph<Graph, is_residual_edge<ResCapMap> >
+	(g, is_residual_edge<ResCapMap>(residual_capacity));
+}
+
+int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices, std::vector<Edge> &critical)
 {
-    typedef std::pair<int, int> Edge;
 
     // Transform into graph and double the edges
     //
@@ -322,8 +332,6 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
     //
     //
 
-    using namespace boost;
-
     typedef adjacency_list_traits<vecS, vecS, directedS> Traits;
     typedef adjacency_list<vecS, vecS, directedS, 
         property<vertex_name_t, std::string,
@@ -405,8 +413,42 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
                         << (capacity[*ei] - residual_capacity[*ei]) << std::endl;
     }
 
+    // Find the critical edges (throats / pores)
+    //
+    
+    // First, make capacity = residual capacity for all edges
+    for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
+    {
+        for (tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei)
+        {
+            //std::cout<<*u_iter<<" "<<target(*ei, g)<<": "<<capacity[*ei]<<", "<<residual_capacity[*ei]<<std::endl;
+    //        capacity[*ei] = residual_capacity[*ei];
+        }
+    }
+
+    // Run Edmonds Karp on residual network -- should have 0 flow and should also
+    // tell us where the BFS ended
+	std::vector<default_color_type> color(num_vertices(g));
+	std::vector<Traits::edge_descriptor> pred(num_vertices(g));
+    //int zero_flow = edmonds_karp_max_flow(g, s, t, capacity, residual_capacity, reverse, &color[0], &pred[0]);
+    //assert(zero_flow == 0);
+
+    boost::queue<Traits::vertex_descriptor> Q;
+    breadth_first_search(detail::residual_graph(g, residual_capacity), s, Q,
+         make_bfs_visitor(record_edge_predecessors(&pred[0], on_tree_edge())),
+         &color[0]);
+
+    for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
+    {
+        std::cout<<*u_iter<<": color "<<color[*u_iter]<<", pred "<<pred[*u_iter]<<std::endl;
+    }
+
+
     return flow;
 }
+
+
+
 
 
 int main(int argc, char* argv[])
@@ -432,8 +474,11 @@ int main(int argc, char* argv[])
         printf("Computing boundaries: # left = %d, # right = %d\n", (int)left.size(), (int)right.size());
     }
 
-    maxFlow(left, right, false /*doubleVertices*/);
-    maxFlow(left, right, true /*doubleVertices*/);
+    std::vector<Edge> criticalThroats;
+    maxFlow(left, right, false /*doubleVertices*/, criticalThroats);
+
+    std::vector<Edge> criticalPores;
+  //  maxFlow(left, right, true /*doubleVertices*/, criticalPores);
 
     return 0;
 }
