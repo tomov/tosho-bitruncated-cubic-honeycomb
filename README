@@ -1,3 +1,4 @@
+input.txt -- first line = # of solutions to generate, second line = N = lattice side, third line = target distribution of coordination numbers
 run_tosho.py -- generates a regular lattice based on given N and target distribution of pore coordination numbers. Outputs two files -- neigh and coords
 merge_outs.py -- merges the outputs of run_tosho.py into a format that can be used by conductance.py
 conductance/conductance.py -- finds the critical features

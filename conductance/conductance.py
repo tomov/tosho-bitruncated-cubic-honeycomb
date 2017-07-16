@@ -11,6 +11,7 @@ import math
 import sys
 import os
 import heapq as heap
+import datetime
 
 """
 coords # array of pores = (pore X, pore Y, pore Z, pore radius in m)
@@ -431,7 +432,9 @@ def solve(infile, outfile):
     # Find the critical throats
     #
     print '\nFinding critical throats...'
+    then = datetime.datetime.now()
     max_flow_throats, critical_throats = edmondsKarp(coords, neigh, left, right, doubleVertices=False)
+    print 'Edmonds Karp took ', (datetime.datetime.now() - then).total_seconds(), ' sec'
     assert len(critical_throats) == max_flow_throats
     print 'max flow (throats) = ', max_flow_throats
     print 'critical edges (throats) = ', critical_throats

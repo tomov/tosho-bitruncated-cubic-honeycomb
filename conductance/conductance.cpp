@@ -5,6 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <utility>
+#include <chrono>
 #include <boost/graph/push_relabel_max_flow.hpp>
 #include <boost/graph/edmonds_karp_max_flow.hpp>
 #include <boost/graph/boykov_kolmogorov_max_flow.hpp>
@@ -71,14 +72,14 @@ double ucs;
 int N;
 double permeability;
 
-int readCSV(const char* filename)
+int readCSV(const char* infile)
 {
     // Row format:
     //  0 1 2  3     4     5   6  7  8  9  10  11  12  13       14  15       16  17
     // [X,Y,Z,Pore1,Pore2,ThR,Pr,LB,RB,UCS,N,Perm, Qx, QXtotal, Qy, QYtotal, Qz, QZtotal] 
     //
 
-    FILE* f = fopen(filename, "r");
+    FILE* f = fopen(infile, "r");
     char l[10000];
     char buf[10000];
     char* line[100];
@@ -270,7 +271,7 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
 
     // Build adjacency list
     //
-    std::vector<int> adj[verts.size()];
+    std::vector<std::vector<int> > adj(verts.size());
     for (int i = 0; i < edges.size(); i++)
     {
         int u = edges[i].first;
@@ -301,7 +302,7 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
     property_map<Graph, edge_residual_capacity_t>::type residual_capacity = get(edge_residual_capacity, g);
 
     // Add verts
-    Traits::vertex_descriptor vertex_descriptors[verts.size()];
+    std::vector<Traits::vertex_descriptor> vertex_descriptors(verts.size());
     for (int i = 0; i < verts.size(); i++)
     {
         vertex_descriptors[i] = add_vertex(g);
@@ -310,7 +311,7 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
     Traits::vertex_descriptor t = vertex_descriptors[sink];
    
     // Add edges
-    Traits::edge_descriptor edge_descriptors[edges.size()];
+    std::vector<Traits::edge_descriptor> edge_descriptors(edges.size());
     for (int i = 0; i < edges.size(); i++)
     {
         Traits::vertex_descriptor u = vertex_descriptors[edges[i].first];
@@ -339,9 +340,15 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
     }
 
     // Run max flow
+    auto start = std::chrono::steady_clock::now();
+
     flow = push_relabel_max_flow(g, s, t);
     //flow = edmonds_karp_max_flow(g, s, t);
     //flow = boykov_kolmogorov_max_flow(g, s, t);
+
+    auto end = std::chrono::steady_clock::now();
+    auto diff = end - start;
+    std::cout<<"Elapsed time is :  "<< std::chrono::duration_cast<std::chrono::microseconds>(diff).count() / 1000000.0<<" s "<<std::endl;
 
     // Print output
     std::cout << "The total flow: " << flow << std::endl;
@@ -365,10 +372,10 @@ int main(int argc, char* argv[])
     using namespace boost;
 
     int direction = 0;
-    const char *filename = "datadir/Sandstone1X.csv";
+    const char *infile = argv[1];
 
-    readCSV(filename);
-    printf("solving %s\n", filename);
+    readCSV(infile);
+    printf("solving %s\n", infile);
     printf("N = %d\n", N);
     printf("UCS = %lf\n", ucs);
     printf("perm = %e\n", permeability);

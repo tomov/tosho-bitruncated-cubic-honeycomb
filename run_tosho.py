@@ -1,5 +1,5 @@
 # Generates solutions for a given N and target distribution
-# Usage: python.py run_tosho.py [input filename] [output directory] [number of threads]
+# Usage: python run_tosho.py [input filename] [output directory] [number of threads]
 # Example usage: python run_tosho.py input.txt tosho_solutions 4
 #
 
