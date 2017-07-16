@@ -1,3 +1,5 @@
+// Same as conductance.py but faster
+//
 #include <boost/config.hpp>
 #include <iostream>
 #include <cstdio>
@@ -58,22 +60,27 @@ struct Throat
 {
     int p1, p2;
     double r;
-    std::vector<int> edges; // corresponding edges
 
     Throat() {}
     Throat(int _p1, int _p2, double _r)
         : p1(_p1), p2(_p2), r(_r) {}
 };
 
-std::vector<Pore> pores;
-std::vector<Throat> throats;
-std::vector<int> left, right;
-double ucs;
-int N;
-double permeability;
-
-int readCSV(const char* infile)
+struct Network
 {
+    std::vector<Pore> pores;
+    std::vector<Throat> throats;
+    double ucs;
+    int n;
+    double permeability;
+};
+
+Network readCSV(const char* infile, std::vector<int> &left /*out*/, std::vector<int> &right)
+{
+    Network net;
+    left.clear();
+    right.clear();
+
     // Row format:
     //  0 1 2  3     4     5   6  7  8  9  10  11  12  13       14  15       16  17
     // [X,Y,Z,Pore1,Pore2,ThR,Pr,LB,RB,UCS,N,Perm, Qx, QXtotal, Qy, QYtotal, Qz, QZtotal] 
@@ -118,13 +125,13 @@ int readCSV(const char* infile)
         if (!streq(line[0], "") && !streq(line[0], "0"))
         {
             Pore pore(atof(line[0]) * 1e-6, atof(line[1]) * 1e-6, atof(line[2]) * 1e-6, atof(line[6]) * 1e-6);
-            pores.push_back(pore);
+            net.pores.push_back(pore);
             if (DEBUG) printf("%lf %lf %lf: %lf,", pore.x, pore.y, pore.z, pore.r);
         }
         if (!streq(line[3], "") && !streq(line[3], "0"))
         {
             Throat throat(atoi(line[3]) - 1, atoi(line[4]) - 1, atof(line[5]) * 1e-6);
-            throats.push_back(throat);
+            net.throats.push_back(throat);
             if (DEBUG) printf("%d %d: %lf,", throat.p1, throat.p2, throat.r);
         }
         if (!streq(line[7], "") && !streq(line[7], "0"))
@@ -141,42 +148,42 @@ int readCSV(const char* infile)
         }
         if (!streq(line[9], "") && !streq(line[9], "0"))
         {
-            ucs = atof(line[9]);
-            if (DEBUG) printf("%lf,", ucs);
+            net.ucs = atof(line[9]);
+            if (DEBUG) printf("%lf,", net.ucs);
         }
         if (!streq(line[10], "") && !streq(line[10], "0"))
         {
-            N = atoi(line[10]);
-            if (DEBUG) printf("%d,", N);
+            net.n = atoi(line[10]);
+            if (DEBUG) printf("%d,", net.n);
         }
         if (!streq(line[11], "") && !streq(line[11], "0"))
         {
-            permeability = atof(line[11]);
-            if (DEBUG) printf("%lf,", permeability);
+            net.permeability = atof(line[11]);
+            if (DEBUG) printf("%lf,", net.permeability);
         }
 
         if (DEBUG) printf("\n");
     }
     fclose(f);
 
-    return 0;
+    return net;
 }
 
 
-void getBoundaries(const std::vector<Pore> &pores, int direction, std::vector<int> &starting, std::vector<int> &ending)
+void getBoundaries(const Network &net, int direction, std::vector<int> &starting /*out*/, std::vector<int> &ending /*out*/)
 {
     starting.clear();
     ending.clear();
-    std::vector<double> left_b(pores.size()), right_b(pores.size());
-    double min_b = pores[0][direction], max_b = pores[0][direction];
-    for (int i = 0; i < pores.size(); i++)
+    std::vector<double> left_b(net.pores.size()), right_b(net.pores.size());
+    double min_b = net.pores[0][direction], max_b = net.pores[0][direction];
+    for (int i = 0; i < net.pores.size(); i++)
     {
-        min_b = std::min(min_b, pores[i][direction]);
-        max_b = std::max(max_b, pores[i][direction]);
-        left_b[i] = pores[i][direction] - pores[i].r;
-        right_b[i] = pores[i][direction] + pores[i].r;
+        min_b = std::min(min_b, net.pores[i][direction]);
+        max_b = std::max(max_b, net.pores[i][direction]);
+        left_b[i] = net.pores[i][direction] - net.pores[i].r;
+        right_b[i] = net.pores[i][direction] + net.pores[i].r;
     }
-    for (int i = 0; i < pores.size(); i++)
+    for (int i = 0; i < net.pores.size(); i++)
     {
         if (left_b[i] <= min_b)
         {
@@ -200,25 +207,17 @@ residual_graph(Graph& g, ResCapMap residual_capacity) {
 	(g, is_residual_edge<ResCapMap>(residual_capacity));
 }
 
-int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices, std::vector<Edge> &critical)
+int maxFlow(const Network &net, const std::vector<int> &left, const std::vector<int> &right, bool doubleVertices, std::vector<Edge> &critical /*out*/)
 {
 
     // Transform into graph and double the edges
     //
-    std::vector<Pore> verts = pores;
+    std::vector<Pore> verts = net.pores;
     std::vector<Edge> edges;
-    std::vector<Throat*> edgeThroats; // pointers to the corresponding throats
-    for (int i = 0; i < throats.size(); i++)
+    for (auto throat : net.throats)
     {
-        edges.push_back(Edge(throats[i].p1, throats[i].p2));
-        edges.push_back(Edge(throats[i].p2, throats[i].p1));
-
-        edgeThroats.push_back(&throats[i]);
-        edgeThroats.push_back(&throats[i]);
-
-        throats[i].edges.clear();
-        throats[i].edges.push_back(edges.size() - 2);
-        throats[i].edges.push_back(edges.size() - 1);
+        edges.push_back(Edge(throat.p1, throat.p2));
+        edges.push_back(Edge(throat.p2, throat.p1));
     }
 
     // Add source & sink
@@ -232,12 +231,10 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices, 
     for (int i = 0; i < left.size(); i++)
     {
         edges.push_back(Edge(source, left[i]));
-        edgeThroats.push_back(nullptr);
     }
     for (int i = 0; i < right.size(); i++)
     {
         edges.push_back(Edge(right[i], sink));
-        edgeThroats.push_back(nullptr);
     }
 
     // Add rev edges
@@ -272,7 +269,7 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices, 
         }
     }
 
-    // Double verts TODO
+    // Double vertices
     //
     int verts_n = verts.size();
     if (doubleVertices)
@@ -463,28 +460,30 @@ int main(int argc, char* argv[])
     int direction = 0;
     const char *infile = argv[1];
 
-    readCSV(infile);
+    std::vector<int> left, right;
+    Network net = readCSV(infile, left, right);
+
     printf("solving %s\n", infile);
-    printf("N = %d\n", N);
-    printf("UCS = %lf\n", ucs);
-    printf("perm = %e\n", permeability);
-    printf("# pores = %d\n", (int)pores.size());
-    printf("# throats = %d\n", (int)throats.size());
+    printf("N = %d\n", net.n);
+    printf("UCS = %lf\n", net.ucs);
+    printf("perm = %e\n", net.permeability);
+    printf("# pores = %d\n", (int)net.pores.size());
+    printf("# throats = %d\n", (int)net.throats.size());
     printf("# pores on left boundary = %d\n", (int)left.size());
     printf("# pores on right boundary = %d\n", (int)right.size());
 
-    // Get boundary pores
+    // Get boundary pores, if none were provided
     //
     if (left.size() == 0 || right.size() == 0)
     {
-        getBoundaries(pores, direction, left, right);
+        getBoundaries(net, direction, left, right);
         printf("Computing boundaries: # left = %d, # right = %d\n", (int)left.size(), (int)right.size());
     }
 
     // Critical throats
     //
     std::vector<Edge> criticalThroats;
-    int ct = maxFlow(left, right, false /*doubleVertices*/, criticalThroats);
+    int ct = maxFlow(net, left, right, false /*doubleVertices*/, criticalThroats);
     std::cout<<"Critical throats (count = "<<ct<<") = [";
     for (auto it : criticalThroats)
     {
@@ -495,7 +494,7 @@ int main(int argc, char* argv[])
     // Critical pores
     //
     std::vector<Edge> criticalPores;
-    int cp = maxFlow(left, right, true /*doubleVertices*/, criticalPores);
+    int cp = maxFlow(net, left, right, true /*doubleVertices*/, criticalPores);
     std::cout<<"Critical pores (count = "<<cp<<") = [";
     for (auto it : criticalPores)
     {
