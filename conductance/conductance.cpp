@@ -392,9 +392,9 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices, 
     // Run max flow
     auto start = std::chrono::steady_clock::now();
 
-    //flow = push_relabel_max_flow(g, s, t);
-    flow = edmonds_karp_max_flow(g, s, t);
-    //flow = boykov_kolmogorov_max_flow(g, s, t);
+    //flow = push_relabel_max_flow(g, s, t); // NOTE: push-relabel doesn't work well with the residual capacities; cannot run BFS on residual network afterwards
+    //flow = edmonds_karp_max_flow(g, s, t); 
+    flow = boykov_kolmogorov_max_flow(g, s, t);
 
     auto end = std::chrono::steady_clock::now();
     auto diff = end - start;
@@ -426,7 +426,7 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices, 
     critical.clear();
     for (tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
     {
-        std::cout<<*u_iter<<": color "<<color[*u_iter]<<", pred "<<pred[*u_iter]<<std::endl;
+        if (DEBUG) std::cout<<*u_iter<<": color "<<color[*u_iter]<<", pred "<<pred[*u_iter]<<std::endl;
         for (tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei)
         {
             int u = *u_iter;
@@ -443,11 +443,11 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices, 
             if (cf == 0 && color[u] != color[v])
             {
                 critical.push_back(Edge(u, v));
-                std::cout<<"             critical edge "<<u<<" "<<v<<std::endl;
+                if (DEBUG) std::cout<<"             critical edge "<<u<<" "<<v<<std::endl;
             }
         }
     }
-    assert(critical.size() == flow);
+    assert(critical.size() == flow); // NOTE: fails w/ push-relabel
 
     return flow;
 }
@@ -473,17 +473,35 @@ int main(int argc, char* argv[])
     printf("# pores on left boundary = %d\n", (int)left.size());
     printf("# pores on right boundary = %d\n", (int)right.size());
 
+    // Get boundary pores
+    //
     if (left.size() == 0 || right.size() == 0)
     {
         getBoundaries(pores, direction, left, right);
         printf("Computing boundaries: # left = %d, # right = %d\n", (int)left.size(), (int)right.size());
     }
 
+    // Critical throats
+    //
     std::vector<Edge> criticalThroats;
-    maxFlow(left, right, false /*doubleVertices*/, criticalThroats);
+    int ct = maxFlow(left, right, false /*doubleVertices*/, criticalThroats);
+    std::cout<<"Critical throats (count = "<<ct<<") = [";
+    for (auto it : criticalThroats)
+    {
+        std::cout<<"("<<it.first<<", "<<it.second<<"), ";
+    }
+    std::cout<<"]\n\n";
 
+    // Critical pores
+    //
     std::vector<Edge> criticalPores;
-  //  maxFlow(left, right, true /*doubleVertices*/, criticalPores);
+    int cp = maxFlow(left, right, true /*doubleVertices*/, criticalPores);
+    std::cout<<"Critical pores (count = "<<cp<<") = [";
+    for (auto it : criticalPores)
+    {
+        std::cout<<"("<<it.first<<", "<<it.second<<"), ";
+    }
+    std::cout<<"]\n\n";
 
     return 0;
 }
