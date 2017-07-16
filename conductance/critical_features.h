@@ -16,6 +16,8 @@
 #include <boost/graph/boykov_kolmogorov_max_flow.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/read_dimacs.hpp>
+#include "boost/filesystem/operations.hpp"
+#include "boost/filesystem/path.hpp"
 
 
 const bool DEBUG = false;
@@ -631,6 +633,34 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
     std::cout<<"\n";
 
     return new_net;
+}
+
+
+
+std::vector<std::string> ls_csv(const char* dirname)
+{
+    std::vector<std::string> files;
+    std::cout<<"========================== EXPLORING DIRECTORY "<<dirname<<" ======================\n";
+
+    namespace fs = boost::filesystem;
+    fs::path full_path( fs::initial_path<fs::path>() );
+    full_path = fs::system_complete( fs::path( dirname ) );
+    fs::directory_iterator end_iter;
+    for ( fs::directory_iterator dir_itr( full_path );
+          dir_itr != end_iter;
+          ++dir_itr )
+    {
+        if ( fs::is_regular_file( dir_itr->status() ) )
+        {
+            std::string fname = absolute(dir_itr->path()).generic_string();
+            if (streq(fname.c_str() + fname.size() - 4, ".csv"))
+            {
+                files.push_back(fname);
+            }
+        }
+    }
+
+    return files;
 }
 
 #endif

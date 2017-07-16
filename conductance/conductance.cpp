@@ -9,15 +9,17 @@
 
 void solve(const char* infile, const char* outfile, int direction)
 {
+    printf("\n\n------------------- solving %s ------------------\n\n", infile);
+
     std::vector<int> left, right;
     Network net = readCSV(infile, left, right);
 
-    printf("solving %s\n", infile);
     printf("N = %d\n", net.n);
     printf("UCS = %lf\n", net.ucs);
     printf("perm = %e\n", net.permeability);
     printf("# pores = %d\n", (int)net.pores.size());
     printf("# throats = %d\n", (int)net.throats.size());
+    printf("direction = %d\n", direction);
     printf("# pores on left boundary = %d\n", (int)left.size());
     printf("# pores on right boundary = %d\n", (int)right.size());
 
@@ -89,7 +91,12 @@ int main(int argc, char* argv[])
     else
     {
         const char* dirname = infile;
-        assert(false);
+        std::vector<std::string> infiles = ls_csv(dirname);
+
+        for (auto infile : infiles)
+        {
+            solve(infile.c_str(), outfile, direction);
+        }
     }
 
     return 0;
