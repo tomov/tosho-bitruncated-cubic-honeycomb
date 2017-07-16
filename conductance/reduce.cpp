@@ -1,31 +1,43 @@
-// Finds 
 //
-// Ex: ./reduce merged/merged_N_20.csv cp_cns.txt reduced/merged_N_20.reduced.csv
-// Ex: ./reduce merged cp_cns.txt reduced 
-// Ex: ./reduce reduced/merged_N_20.reduced.csv cp_cns.txt /dev/null
+// Usage: ./reduce [input file / directory] [coordination # file] [output file / directory] [fraction of pores to remove on each iteration] [how many terminal iterations]
+// Ex: ./reduce merged/merged_N_20.csv cp_cns.txt reduced/merged_N_20.reduced.csv 0.5 2
+// Ex: ./reduce merged cp_cns.txt reduced 0.5 2
+// Ex: ./reduce reduced/merged_N_20.reduced.csv cp_cns.txt /dev/null 0.5 2
 //
 #include "critical_features.h"
 
-std::vector<std::vector<int>> readCN(const char* infile)
+std::vector<std::vector<int>> readCN(const char* infile, std::vector<int> &ct /*out*/, std::vector<int> &cp /*out*/)
 {
+    // Format: Each line = # of critical throats [space] # of critical pores [space] coordination numbers of critical pores, separated by spaces
+    // One line per direction; directions are X, Y, Z
+    //
     FILE* f = fopen(infile, "r");
     char line[3][100000];
 
     std::vector<std::vector<int>> cp_cns(3);
+    ct.clear();
+    cp.clear();
     for (int direction = 0; direction < 3; direction++)
     {
         fgets(line[direction], sizeof(line[direction]), f);
 
         int offset;
-        int cn;
+        int _ct, _cp, cn;
         const char* s = line[direction];
+
+        sscanf(s, " %d%d%n", &_ct, &_cp, &offset); 
+        ct.push_back(_ct);
+        cp.push_back(_cp);
+        s += offset;
+
         while (sscanf(s, " %d%n", &cn, &offset) == 1)
         {
             cp_cns[direction].push_back(cn);
             s += offset;
         }
+        assert(_cp == cp_cns[direction].size());
 
-        printf("Target CNs in X direction: ");
+        printf("Target CNs in direction %d: ", direction);
         for (auto cn : cp_cns[direction])
         {
             printf("%d, ", cn);
@@ -37,7 +49,7 @@ std::vector<std::vector<int>> readCN(const char* infile)
 }
 
 
-void solve(const char* infile, const char* cnfile, const char* outfile)
+void solve(const char* infile, const char* cnfile, const char* outfile, double frac, int terminal)
 {
     printf("\n\n------------------- solving %s ------------------\n\n", infile);
 
@@ -52,15 +64,37 @@ void solve(const char* infile, const char* cnfile, const char* outfile)
     printf("# pores on left boundary = %d\n", (int)left.size());
     printf("# pores on right boundary = %d\n", (int)right.size());
 
-    std::vector<std::vector<int>> cp_cns = readCN(cnfile);
+    std::vector<int> ct, cp;
+    std::vector<std::vector<int>> cp_cns = readCN(cnfile, ct /*out*/, cp /*out*/);
 
     // Remove critical pores until reaching a given target histogram
     //
     Network new_net = net;
-    for (int direction = 0; direction < 3; direction++)
+    std::vector<std::vector<Edge>> criticalThroats(3), criticalPores(3);
+    for (int round = 0, remaining = 1000000000; remaining > 0; round++, remaining--)
     {
-        getBoundaries(net, direction, left, right);
-        new_net = fitCriticalPoreCNs(new_net, left, right, cp_cns[direction]);
+        printf("\n\n\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< ROUND %d >>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n\n", round);
+        for (int direction = 0; direction < 3; direction++)
+        {
+            printf("\n\n>>> direction = %d\n", direction);
+            getBoundaries(net, direction, left, right);
+            new_net = fitCriticalPoreCNs(new_net, left, right, cp_cns[direction], frac, criticalThroats[direction] /*out*/, criticalPores[direction] /*out*/);
+
+            // Once we reach the # of critical features in either direction, give it one more iteration
+            //
+            if (criticalThroats[direction].size() < ct[direction] || criticalPores[direction].size() < cp[direction])
+            {
+                if (remaining > terminal)
+                {
+                    remaining = terminal;
+                    printf("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!! TERMINAL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+                }
+            }
+            if (frac == 0) // special case -- instead of doing an infinite loop, just exit (this is for sanity checking stuff)
+            {
+                remaining = 1;
+            }
+        }
     }
 
     new_net.save(outfile);
@@ -74,10 +108,12 @@ int main(int argc, char* argv[])
     const char *infile = argv[1];
     const char *cnfile = argv[2];
     const char *outfile = argv[3];
+    double frac = atof(argv[4]);
+    int terminal = atoi(argv[5]);
 
     if (streq(infile + strlen(infile) - 4, ".csv"))
     {
-        solve(infile, cnfile, outfile);
+        solve(infile, cnfile, outfile, frac, terminal);
     }
     else
     {
@@ -100,7 +136,7 @@ int main(int argc, char* argv[])
 
             std::string outfile = (std::string)(outdir) + "/" + infilename.substr(0, infilename.length() - 4) + ".reduced.csv";
 
-            solve(infile.c_str(), cnfile, outfile.c_str());
+            solve(infile.c_str(), cnfile, outfile.c_str(), frac, terminal);
         }
     }
 

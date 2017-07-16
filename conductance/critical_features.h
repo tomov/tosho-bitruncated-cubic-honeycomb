@@ -11,6 +11,7 @@
 #include <chrono>
 #include <cmath>
 #include <iomanip>
+#include <numeric>
 #include <boost/graph/push_relabel_max_flow.hpp>
 #include <boost/graph/edmonds_karp_max_flow.hpp>
 #include <boost/graph/boykov_kolmogorov_max_flow.hpp>
@@ -83,7 +84,7 @@ struct Network
 
     void save(const char* filename)
     {
-        printf("Saving network to %s\n", filename);
+        printf("\n\nSaving network to %s\n\n", filename);
         int lines = (int)std::max(pores.size(), throats.size());
         FILE *f = fopen(filename, "w");
         for (int l = 0; l < lines; l++)
@@ -503,8 +504,13 @@ int maxFlow(const Network &net, const std::vector<int> &left, const std::vector<
 }
 
 
+double unif_rand()
+{
+    return ((double) rand() / (RAND_MAX));
+}
 
-Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, const std::vector<int> &right, const std::vector<int> &cp_cns)
+
+Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, const std::vector<int> &right, const std::vector<int> &cp_cns, double prob, std::vector<Edge> &newCriticalThroats /*out*/, std::vector<Edge> &newCriticalPores /*out*/)
 {
     std::cout<<"\n\n\n ------------------- fitCriticalPoreCNs --------------------\n\n\n";
 
@@ -568,8 +574,9 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
         if (DEBUG) std::cout<<cn<<": "<<hist[cn]<<" vs. "<<target[cn]<<"\n";
         // As long as there are more CPs with the given CN in the target distribution,
         // keep reassigning them to different CNs randomly (closer CNs are preferred)
+        // ...unless we're out of CPs in the actual distribution
         //
-        while (hist[cn] < target[cn])
+        while (hist[cn] < target[cn] && std::accumulate(hist.begin(), hist.end(), 0) > std::accumulate(target.begin(), target.end(), 0))
         {
             bool done = false;
             // Must make sure to reassign to a new CN that is feasible
@@ -586,7 +593,7 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
                     if (DEBUG) std::cout<<"      "<<i<<" -> "<<cn_weights[i]<<" ("<<(hist[i] - target[i])<<" remaining)\n";
                 }
 
-                double r = sum * ((double) rand() / (RAND_MAX));
+                double r = sum * unif_rand();
                 int new_cn = -1;
                 for (int i = 0; i <= MAX_CN; i++)
                 {
@@ -623,7 +630,10 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
     for (int cn = 0; cn <= MAX_CN; cn++)
     {
         int to_remove = hist[cn] - target[cn];
-        assert(to_remove >= 0);
+        if (to_remove <= 0)
+        {
+            continue;
+        }
 
         std::vector<int> temp = cps[cn];
         assert(temp.size() == hist[cn]);
@@ -632,8 +642,8 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
         for (int i = 0; i < to_remove; i++)
         {
             int p = temp[i];
-            removed[p] = true;
-            if (DEBUG) std::cout<<" remove "<<p<<" (cn = "<<cns[p]<<")\n";
+            removed[p] = unif_rand() < prob;
+            if (DEBUG) std::cout<<" remove "<<p<<" (cn = "<<cns[p]<<"); really? "<<removed[p]<<"\n";
         }
     }
 
@@ -652,18 +662,28 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
     new_net.throats = new_throats;
     std::cout<<"new net has "<<new_net.throats.size()<<" throats\n";
 
-    // Find critical pores in new net
+    // Find critical throats in new net
     //
-    std::vector<Edge> newCriticalPores;
-    flow = maxFlow(new_net, left, right, true /*doubleVertices*/, newCriticalPores);
-    std::cout<<"New critical pores (count = "<<flow<<") = [";
-    for (auto it : newCriticalPores)
+    flow = maxFlow(new_net, left, right, false /*doubleVertices*/, newCriticalThroats /*out*/);
+    std::cout<<"New critical throats (count = "<<flow<<") = [";
+    for (auto it : newCriticalThroats)
     {
         std::cout<<"("<<it.first<<", "<<it.second<<"), ";
     }
     std::cout<<"]\n\n";
 
+    // Find critical pores in new net
+    //
+    flow = maxFlow(new_net, left, right, true /*doubleVertices*/, newCriticalPores /*out*/);
+    std::cout<<"New critical pores (count = "<<flow<<") = [";
+    for (auto it : newCriticalPores)
+    {
+        std::cout<<"("<<it.first<<"), ";
+    }
+    std::cout<<"]\n\n";
+
     // Find new histogram
+    //
     std::vector<int> new_hist(MAX_CN + 2); // CP coordination # histogram
     for (auto it : newCriticalPores)
     {

@@ -35,7 +35,7 @@ void solve(const char* infile, const char* outfile, int direction)
     // Critical throats
     //
     std::vector<Edge> criticalThroats;
-    flow = maxFlow(net, left, right, false /*doubleVertices*/, criticalThroats);
+    flow = maxFlow(net, left, right, false /*doubleVertices*/, criticalThroats /*out*/);
     std::cout<<"Critical throats (count = "<<flow<<") = [";
     for (auto it : criticalThroats)
     {
@@ -46,11 +46,11 @@ void solve(const char* infile, const char* outfile, int direction)
     // Critical pores
     //
     std::vector<Edge> criticalPores;
-    flow = maxFlow(net, left, right, true /*doubleVertices*/, criticalPores);
+    flow = maxFlow(net, left, right, true /*doubleVertices*/, criticalPores /*out*/);
     std::cout<<"Critical pores (count = "<<flow<<") = [";
     for (auto it : criticalPores)
     {
-        std::cout<<"("<<it.first<<", "<<it.second<<"), ";
+        std::cout<<"("<<it.first<<"), ";
     }
     std::cout<<"]\n\n";
 
