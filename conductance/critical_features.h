@@ -80,6 +80,52 @@ struct Network
     double ucs;
     int n;
     double permeability;
+
+    void save(const char* filename)
+    {
+        printf("Saving network to %s\n", filename);
+        int lines = (int)std::max(pores.size(), throats.size());
+        FILE *f = fopen(filename, "w");
+        for (int l = 0; l < lines; l++)
+        {
+            if (l >= pores.size())
+            {
+                fprintf(f, "0,0,0,");
+            }
+            else
+            {
+                fprintf(f, "%.6lf,%.6lf,%.6lf,", pores[l].x * 1e6, pores[l].y * 1e6, pores[l].z * 1e6);
+            }
+
+            if (l >= throats.size())
+            {
+                fprintf(f, "0,0,0,");
+            }
+            else
+            {
+                fprintf(f, "%d,%d,%.6lf,", throats[l].p1 + 1, throats[l].p2 + 1, throats[l].r * 1e6);
+            }
+
+            if (l >= pores.size())
+            {
+                fprintf(f, "0,");
+            }
+            else
+            {
+                fprintf(f, "%.6lf,", pores[l].r * 1e6);
+            }
+
+            if (l > 0)
+            {
+                fprintf(f, "0,0,0,0,0\n");
+            }
+            else
+            {
+                fprintf(f, "0,0,%e,%d,%e\n", ucs, n, permeability);
+            }
+        }
+        fclose(f);
+    }
 };
 
 Network readCSV(const char* infile, std::vector<int> &left /*out*/, std::vector<int> &right)
@@ -133,7 +179,7 @@ Network readCSV(const char* infile, std::vector<int> &left /*out*/, std::vector<
         {
             Pore pore(atof(line[0]) * 1e-6, atof(line[1]) * 1e-6, atof(line[2]) * 1e-6, atof(line[6]) * 1e-6);
             net.pores.push_back(pore);
-            if (DEBUG) printf("%lf %lf %lf: %lf,", pore.x, pore.y, pore.z, pore.r);
+            if (DEBUG) printf("%lf %lf %lf: %lf\n", pore.x, pore.y, pore.z, pore.r);
         }
         if (!streq(line[3], "") && !streq(line[3], "0"))
         {
