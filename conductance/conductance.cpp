@@ -266,7 +266,45 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
     //
     if (doubleVertices)
     {
-        assert(false);
+        int verts_n = verts.size();
+        for (int i = 0; i < verts_n; i++)
+        {
+            verts.push_back(verts[i]);
+        }
+        
+        // Make existing edges u_out -> v_in
+        for (int i = 0; i < edges_n; i++)
+        {
+            Edge e = edges[i];
+            Edge new_edge = Edge(e.first + verts_n, e.second);
+            edges[i] = new_edge;
+
+            // Reverse edge
+            e = edges[i + edges_n];
+            assert(e.second + verts_n == new_edge.first);
+            assert(e.first == new_edge.second);
+            new_edge = Edge(e.first, e.second + verts_n);
+            edges[i + edges_n] = new_edge;
+        }
+
+        source += verts_n;
+
+        // Add in-out edges
+        for (int u = 0; u < verts_n; u++)
+        {
+            int v = u + verts_n;
+
+            edges.push_back(Edge(u, v));
+            //flow.push_back(0);
+            cap.push_back(1);
+            rev.push_back(edges.size());
+
+            // Add reverse edge
+            edges.push_back(Edge(v, u));
+            //flow.push_back(0);
+            cap.push_back(0);
+            rev.push_back(edges.size() - 2);
+        }
     }
 
     // Build adjacency list
@@ -278,8 +316,12 @@ int maxFlow(std::vector<int> left, std::vector<int> right, bool doubleVertices)
         adj[u].push_back(i);
     }
 
+    //
+    //
     // Convert to Boost Graph structure 
     //
+    //
+
     using namespace boost;
 
     typedef adjacency_list_traits<vecS, vecS, directedS> Traits;
@@ -391,6 +433,7 @@ int main(int argc, char* argv[])
     }
 
     maxFlow(left, right, false /*doubleVertices*/);
+    maxFlow(left, right, true /*doubleVertices*/);
 
     return 0;
 }
