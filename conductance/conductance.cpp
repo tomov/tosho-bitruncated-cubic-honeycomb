@@ -456,6 +456,8 @@ int maxFlow(const Network &net, const std::vector<int> &left, const std::vector<
 
 Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, const std::vector<int> &right, const std::vector<int> &cp_cns)
 {
+    std::cout<<"\n\n\n ------------------- fitCriticalPoreCNs --------------------\n\n\n";
+
     // find current critical pores
     //
     std::vector<Edge> criticalPores;
@@ -511,7 +513,6 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
 
     // Modify target histogram so it's a subset of the actual histogram
     //
-    srand(time(NULL));
     for (int cn = 0; cn <= MAX_CN; cn++)
     {
         if (DEBUG) std::cout<<cn<<": "<<hist[cn]<<" vs. "<<target[cn]<<"\n";
@@ -526,13 +527,13 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
             do
             {
                 std::vector<double> cn_weights(MAX_CN + 1);
-                int sum = 0;
+                double sum = 0;
                 if (DEBUG) std::cout<<" weights for "<<cn<<":\n";
                 for (int i = 0; i <= MAX_CN; i++)
                 {
                     cn_weights[i] = (i == cn) ? 0 : 1.0 / ((i - cn) * (i - cn));
                     sum += cn_weights[i];
-                    if (DEBUG) std::cout<<"      "<<i<<" -> "<<cn_weights[i]<<"\n";
+                    if (DEBUG) std::cout<<"      "<<i<<" -> "<<cn_weights[i]<<" ("<<(hist[i] - target[i])<<" remaining)\n";
                 }
 
                 double r = sum * ((double) rand() / (RAND_MAX));
@@ -613,7 +614,7 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
     std::cout<<"]\n\n";
 
     // Find new histogram
-    std::vector<int> new_hist(MAX_CN + 1); // CP coordination # histogram
+    std::vector<int> new_hist(MAX_CN + 2); // CP coordination # histogram
     for (auto it : newCriticalPores)
     {
         int cp = it.first;
@@ -635,7 +636,7 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
 
 int main(int argc, char* argv[])
 {
-    using namespace boost;
+    srand(time(NULL));
 
     int direction = 0;
     const char *infile = argv[1];
@@ -661,8 +662,8 @@ int main(int argc, char* argv[])
     }
 
     int flow;
-    // Critical throats
-    //
+//    // Critical throats
+//    //
 //    std::vector<Edge> criticalThroats;
 //    flow = maxFlow(net, left, right, false /*doubleVertices*/, criticalThroats);
 //    std::cout<<"Critical throats (count = "<<ct<<") = [";
@@ -685,7 +686,14 @@ int main(int argc, char* argv[])
 
     // Remove critical pores until reaching a given target histogram
     //
+    getBoundaries(net, 0 /*direction*/, left, right);
     Network new_net = fitCriticalPoreCNs(net, left, right, {2, 3, 4, 5, 9, 9, 10, 12, 14, 14});
+    
+    getBoundaries(net, 1 /*direction*/, left, right);
+    new_net = fitCriticalPoreCNs(new_net, left, right, {3, 3, 5, 5, 8, 8, 8, 9, 9, 10, 14, 14, 14});
+
+    getBoundaries(net, 2 /*direction*/, left, right);
+    new_net = fitCriticalPoreCNs(new_net, left, right, {1, 2, 3, 3, 5, 5, 6, 8});
 
     return 0;
 }
