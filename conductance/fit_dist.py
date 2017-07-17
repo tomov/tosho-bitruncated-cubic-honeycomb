@@ -5,7 +5,7 @@ import sys
 import string
 import numpy as np
 import random
-from conductance import readCSV
+from conductance import readCSV, writeCSV
 
 bin_size = 3
 
@@ -199,3 +199,5 @@ if __name__ == '__main__':
     print 'scatter(x, y);'
     print "xlabel('Pore radius');"
     print "ylabel('Average throat radius');"
+
+    writeCSV(pores, throats, left, right, ucs, n, permeability, outfile)

@@ -86,6 +86,42 @@ def readCSV(filename):
 
     return coords, neigh, left, right, ucs, n, permeability
 
+
+def writeCSV(coords, neigh, left, right, ucs, n, permeability, filename):
+    lines = max(len(coords), len(neigh))
+    with open(filename, "w") as f:
+        for l in range(lines):
+            if l >= len(coords):
+                f.write("0,0,0,")
+            else:
+                f.write("%.6lf,%.6lf,%.6lf," % (coords[l][0] * 1e6, coords[l][1] * 1e6, coords[l][2] * 1e6))
+
+            if l >= len(neigh):
+                f.write("0,0,0,")
+            else:
+                f.write("%d,%d,%.6lf," % (neigh[l][0] + 1, neigh[l][1] + 1, neigh[l][2] * 1e6))
+
+            if l >= len(coords):
+                f.write("0,")
+            else:
+                f.write("%.6lf," % (coords[l][3] * 1e6))
+
+            if l >= len(left):
+                f.write("0,")
+            else:
+                f.write("%d," % left[l])
+
+            if l >= len(right):
+                f.write("0,")
+            else:
+                f.write("%d," % right[l])
+
+            if l > 0:
+                f.write("0,0,0\n")
+            else:
+                f.write("%e,%d,%e\n" % (ucs, n, permeability))
+
+
 def dijkstra(coords, neigh, starting_pore_idxs, ending_pore_idxs):
     # Build adjacency lists
     #
