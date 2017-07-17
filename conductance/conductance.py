@@ -58,9 +58,9 @@ def readCSV(filename):
     neigh = []
     left = []
     right = []
-    ucs = None
-    n = None
-    permeability = None
+    ucs = 0
+    n = 0
+    permeability = 0
     with open(filename, 'r') as f:
         for line in f:
             line = line.split(',')

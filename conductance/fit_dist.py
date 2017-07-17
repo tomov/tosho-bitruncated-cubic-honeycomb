@@ -6,6 +6,7 @@
 # Ex: python fit_dist.py dist/SST1-topology-N_20.csv dist/SST1-PR_distribution-1x49.csv dist/SST1-THR_distribution-1x41.csv dist/SST1-CN_vs_PR-15x49.csv dist/SST1-PR_vs_TH-49x49x41.csv 3 1 fits/SST1.fit.csv
 #
 # Ex: python fit_dist.py SST1-topologies dist/SST1-PR_distribution-1x49.csv dist/SST1-THR_distribution-1x41.csv dist/SST1-CN_vs_PR-15x49.csv dist/SST1-PR_vs_TH-49x49x41.csv 3 1 SST1-fits
+# Ex: python fit_dist.py SST1-topologies dist/SST1-PR_distribution-1x49.csv dist/SST1-THR_distribution-1x41.csv dist/SST1-CN_vs_PR-15x49.csv dist/SST1-PR_vs_TH-49x49x41.csv 1 1 SST1-fits
 
 # Usage for directories:
 # python fit_dist.py [input dir] [bin size] [# of fits] [output dir]
@@ -62,6 +63,7 @@ def read_CN_vs_PR_file(filename):
     return cn_pr
 
 def read_PR_vs_TH_file(filename):
+    pr_pr_th = dict()
     pr_th = dict()
     with open(filename, 'r') as f:
         for line in f:
@@ -72,22 +74,37 @@ def read_PR_vs_TH_file(filename):
             line = line[2:]
 
             #prs = (float(prs[0]) * bin_size * 1e-6, float(prs[1]) * bin_size * 1e-6)
-            if prs in pr_th:
-                for i in range(len(pr_th[prs])):
-                    pr_th[prs][i] += float(line[i])
+            if prs in pr_pr_th:
+                for i in range(len(pr_pr_th[prs])):
+                    pr_pr_th[prs][i] += float(line[i])
             else:
-                pr_th[prs] = [float(l) for l in line]
+                pr_pr_th[prs] = [float(l) for l in line]
+
+            if prs[0] in pr_th:
+                for i in range(len(pr_th[prs[0]])):
+                    pr_th[prs[0]][i] += float(line[i])
+            else:
+                pr_th[prs[0]] = [float(l) for l in line]
+
 
     # normalize them
-    for prs, _ in pr_th.iteritems():
-        s = sum(pr_th[prs])
+    for prs, _ in pr_pr_th.iteritems():
+        s = sum(pr_pr_th[prs])
         if s != 0:
-            pr_th[prs] = [x / s for x in pr_th[prs]]
+            pr_pr_th[prs] = [x / s for x in pr_pr_th[prs]]
 
-        s = sum(pr_th[prs])
+        s = sum(pr_pr_th[prs])
         assert abs(1 - s) < 1e-4 or abs(s) < 1e-4
 
-    return pr_th
+    for pr, _ in pr_th.iteritems():
+        s = sum(pr_th[pr])
+        if s != 0:
+            pr_th[pr] = [x / s for x in pr_th[pr]]
+
+        s = sum(pr_th[pr])
+        assert abs(1 - s) < 1e-4 or abs(s) < 1e-4
+
+    return pr_pr_th, pr_th
 
 
 
@@ -111,9 +128,9 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
         assert len(cn_pr) == 15
         assert len(cn_pr[0]) == len(pr)
 
-        pr_th = read_PR_vs_TH_file(PR_vs_TH_file)
-        assert len(pr_th) == (len(pr) / bin_size + (bin_size != 1))**2
-        assert len(pr_th[(1, 1)]) == len(thr)
+        pr_pr_th, pr_th = read_PR_vs_TH_file(PR_vs_TH_file)
+        assert len(pr_pr_th) == (len(pr) / bin_size + (bin_size != 1))**2
+        assert len(pr_pr_th[(1, 1)]) == len(thr)
 
         # Assign pore radii according to CN_vs_PR
         #
@@ -150,6 +167,7 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
         # Assign throat radii
         #
         generics = 0
+        single_prs = 0
         for i in range(len(throats)):
             p1 = throats[i][0]
             p2 = throats[i][1]
@@ -157,10 +175,14 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
             pr2 = pores[p2][3]
             key = (int(pr1 * 1e6) / bin_size, int(pr2 * 1e6) / bin_size)
 
-            dist = pr_th[key] # throat radius distribution
+            dist = pr_pr_th[key] # throat radius distribution
             if abs(sum(dist)) < 1e-4:
-                generics += 1
-                dist = thr_dist
+                dist = pr_th[int((pr1 + pr2) / 2 * 1e6) / bin_size]
+                if abs(sum(dist)) < 1e-4:
+                    dist = thr_dist
+                    generics += 1
+                else:
+                    single_prs += 1
 
             new_r = -1 # throat radius
             x = random.random()
@@ -173,7 +195,7 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
 
             throats[i] = (throats[i][0], throats[i][1], new_r)
 
-        print 'Used THR for %d out of %d throats' % (generics, len(throats))
+        print 'Used single-PR distirbution for %d and prior distribution for %d out of %d throats' % (single_prs, generics, len(throats))
 
         #
         # get stats for plotting
@@ -248,6 +270,7 @@ if __name__ == '__main__':
             for filename in files:
                 if filename.lower().endswith('.csv'):
                     all_files.append((path, filename))
+                    print 'FILE: ', path, filename
 
         for path, filename in all_files:
             infile = os.path.join(path, filename)
