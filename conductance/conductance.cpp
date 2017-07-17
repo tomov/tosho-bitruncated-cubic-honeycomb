@@ -1,13 +1,13 @@
 // Same as conductance.py but faster
-// usage: ./conductance [input file/dir] [output file] [direction]
-// example #1: ./conductance.py input.csv output.csv 0
-// example #2: ./conductance.py datadir output.csv 1
+// usage: ./conductance [input file/dir] [output file] [direction] [coordScale]
+// example #1: ./conductance.py input.csv output.csv 0 1000
+// example #2: ./conductance.py datadir output.csv 1 1000
 //
 // Unlike conductance.py, this does NOT do the maximum conductance path (max_g = 0)
 //
 #include "critical_features.h"
 
-void solve(const char* infile, const char* outfile, int direction)
+void solve(const char* infile, const char* outfile, int direction, double coordScale)
 {
     printf("\n\n------------------- solving %s ------------------\n\n", infile);
 
@@ -27,7 +27,7 @@ void solve(const char* infile, const char* outfile, int direction)
     //
     if (left.size() == 0 || right.size() == 0)
     {
-        getBoundaries(net, direction, left, right);
+        getBoundaries(net, direction, left, right, coordScale);
         printf("Computing boundaries: # left = %d, # right = %d\n", (int)left.size(), (int)right.size());
     }
 
@@ -83,10 +83,11 @@ int main(int argc, char* argv[])
     const char *infile = argv[1];
     const char *outfile = argv[2];
     int direction = atoi(argv[3]);
+    double coordScale = atof(argv[4]);
 
     if (streq(infile + strlen(infile) - 4, ".csv"))
     {
-        solve(infile, outfile, direction);
+        solve(infile, outfile, direction, coordScale);
     }
     else
     {
@@ -95,7 +96,7 @@ int main(int argc, char* argv[])
 
         for (auto infile : infiles)
         {
-            solve(infile.c_str(), outfile, direction);
+            solve(infile.c_str(), outfile, direction, coordScale);
         }
     }
 

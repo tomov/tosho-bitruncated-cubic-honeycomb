@@ -1,10 +1,10 @@
 // Keep removing critical pores until we match a target critical pore coordination number histogram & critical throat count
 //
-// Usage: ./reduce [input file / directory] [coordination # file] [output file / directory] [fraction of pores to remove on each iteration] [how many terminal iterations]
+// Usage: ./reduce [input file / directory] [coordination # file] [output file / directory] [fraction of pores to remove on each iteration] [how many terminal iterations] [coordScale]
 // 
-// Ex: ./reduce merged/merged_N_20.csv cp_cns.txt reduced/merged_N_20.reduced.csv 0.5 2
-// Ex: ./reduce merged cp_cns.txt reduced 0.5 2
-// Ex: ./reduce reduced/merged_N_20.reduced.csv cp_cns.txt /dev/null 0.5 2
+// Ex: ./reduce merged/merged_N_20.csv cp_cns.txt reduced/merged_N_20.reduced.csv 0.5 2 1000
+// Ex: ./reduce merged cp_cns.txt reduced 0.5 2 1000
+// Ex: ./reduce reduced/merged_N_20.reduced.csv cp_cns.txt /dev/null 0.5 2 1000
 //
 #include "critical_features.h"
 
@@ -51,7 +51,7 @@ std::vector<std::vector<int>> readCN(const char* infile, std::vector<int> &ct /*
 }
 
 
-void solve(const char* infile, const char* cnfile, const char* outfile, double frac, int terminal)
+void solve(const char* infile, const char* cnfile, const char* outfile, double frac, int terminal, double coordScale)
 {
     printf("\n\n------------------- solving %s ------------------\n\n", infile);
 
@@ -79,7 +79,7 @@ void solve(const char* infile, const char* cnfile, const char* outfile, double f
         for (int direction = 0; direction < 3; direction++)
         {
             printf("\n\n>>> direction = %d\n", direction);
-            getBoundaries(net, direction, left, right);
+            getBoundaries(net, direction, left, right, coordScale);
             new_net = fitCriticalPoreCNs(new_net, left, right, cp_cns[direction], frac, criticalThroats[direction] /*out*/, criticalPores[direction] /*out*/);
 
             // Once we reach the # of critical features in either direction, give it one more iteration
@@ -99,7 +99,7 @@ void solve(const char* infile, const char* cnfile, const char* outfile, double f
         }
     }
 
-    new_net.save(outfile);
+    new_net.writeCSV(outfile);
 }
 
 
@@ -112,10 +112,11 @@ int main(int argc, char* argv[])
     const char *outfile = argv[3];
     double frac = atof(argv[4]);
     int terminal = atoi(argv[5]);
+    double coordScale = atof(argv[6]);
 
     if (streq(infile + strlen(infile) - 4, ".csv"))
     {
-        solve(infile, cnfile, outfile, frac, terminal);
+        solve(infile, cnfile, outfile, frac, terminal, coordScale);
     }
     else
     {
@@ -138,7 +139,7 @@ int main(int argc, char* argv[])
 
             std::string outfile = (std::string)(outdir) + "/" + infilename.substr(0, infilename.length() - 4) + ".reduced.csv";
 
-            solve(infile.c_str(), cnfile, outfile.c_str(), frac, terminal);
+            solve(infile.c_str(), cnfile, outfile.c_str(), frac, terminal, coordScale);
         }
     }
 

@@ -1,7 +1,7 @@
 # Find the path with maximum conductance from left to right boundary
-# usage: python conductance.py [input file/dir] [output file] [direction]
-# example #1: python conductance.py input.csv output.csv 0
-# example #2: python conductance.py datadir output.csv 1
+# usage: python conductance.py [input file/dir] [output file] [direction] [coordScale]
+# example #1: python conductance.py input.csv output.csv 0 1
+# example #2: python conductance.py datadir output.csv 1 1
 # If the input filename ends with '.csv', it is read as the only input file
 # Otherwise, it is treated as a directory and all .csv files from that directory and its subdirectories (!) are used as input files
 # The output for all files is appended (!) to the output file.
@@ -58,9 +58,9 @@ def readCSV(filename):
     neigh = []
     left = []
     right = []
-    ucs = 0
-    n = 0
-    permeability = 0
+    ucs = None
+    n = None
+    permeability = None
     with open(filename, 'r') as f:
         for line in f:
             line = line.split(',')
@@ -119,6 +119,12 @@ def writeCSV(coords, neigh, left, right, ucs, n, permeability, filename):
             if l > 0:
                 f.write("0,0,0\n")
             else:
+                if permeability is None:
+                    permeability = 0
+                if ucs is None:
+                    ucs = 0
+                if n is None:
+                    n = 0
                 f.write("%e,%d,%e\n" % (ucs, n, permeability))
 
 
@@ -436,13 +442,13 @@ def edmondsKarp(coords, neigh, starting_pore_idxs, ending_pore_idxs, doubleVerti
 # In case they're not given
 # direction = 0 => X, 1 => Y, 2 => Z
 #
-def getBoundaries(coords, direction):
+def getBoundaries(coords, direction, coordScale):
     starting = []
     ending = []
-    min_b = min([pore[direction] for pore in coords])
-    max_b = max([pore[direction] for pore in coords])
-    left_b = [pore[direction] - pore[3] for pore in coords]
-    right_b = [pore[direction] + pore[3] for pore in coords]
+    min_b = min([pore[direction] * coordScale for pore in coords])
+    max_b = max([pore[direction] * coordScale for pore in coords])
+    left_b = [pore[direction] * coordScale - pore[3] for pore in coords]
+    right_b = [pore[direction] * coordScale + pore[3] for pore in coords]
     for i in range(len(coords)):
         if left_b[i] <= min_b:
             starting.append(i)
@@ -450,7 +456,7 @@ def getBoundaries(coords, direction):
             ending.append(i)
     return starting, ending
 
-def solve(infile, outfile, direction):
+def solve(infile, outfile, direction, coordScale):
     coords, neigh, left, right, ucs, n, permeability = readCSV(infile)
     print '\n\n--------------------- solving', infile, '---------------------------\n\n'
     print 'N = ', n
@@ -462,7 +468,7 @@ def solve(infile, outfile, direction):
     print '# pores on right boundary = ', len(right)
 
     if len(left) == 0 or len(right) == 0:
-        left, right = getBoundaries(coords, direction=direction)
+        left, right = getBoundaries(coords, direction, coordScale)
         print 'Computing boundaries: # left = ', len(left), ', # right = ', len(right)
 
     # Find the critical throats
@@ -495,7 +501,10 @@ def solve(infile, outfile, direction):
     # TODO sanity path calc make sure it's same as max g
 
     with open(outfile, 'a') as f:
-        res = [infile, permeability, max_g, max_g / (n * ucs), ' '.join([str(v + 1) for v in path])]
+        if n and ucs:
+            res = [infile, permeability, max_g, max_g / (n * ucs), ' '.join([str(v + 1) for v in path])]
+        else:
+            res = [infile, permeability, 0, 0, ' '.join([str(v + 1) for v in path])]
         res.append(len(critical_throats))
         res.append(' '.join(['%d-%d' % (e[0] + 1, e[1] + 1) for e in critical_throats]))
         res.append(len(critical_pores))
@@ -507,11 +516,12 @@ if __name__ == '__main__':
     infile = sys.argv[1]
     outfile = sys.argv[2]
     direction = int(sys.argv[3])
+    coordScale = int(sys.argv[4])
 
     if infile.lower().endswith('.csv'):
         # single file
         #
-        solve(infile, outfile, direction)
+        solve(infile, outfile, direction, coordScale)
     else:
         # directory of files
         #
@@ -520,4 +530,4 @@ if __name__ == '__main__':
             print '\n============ EXPLORING DIRECTORY', path, '=================\n'
             for filename in files:
                 if filename.lower().endswith('.csv'):
-                    solve(os.path.join(path, filename), outfile, direction)
+                    solve(os.path.join(path, filename), outfile, direction, coordScale)

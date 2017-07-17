@@ -82,7 +82,7 @@ struct Network
     int n;
     double permeability;
 
-    void save(const char* filename)
+    void writeCSV(const char* filename)
     {
         printf("\n\nSaving network to %s\n\n", filename);
         int lines = (int)std::max(pores.size(), throats.size());
@@ -224,30 +224,35 @@ Network readCSV(const char* infile, std::vector<int> &left /*out*/, std::vector<
 }
 
 
-void getBoundaries(const Network &net, int direction, std::vector<int> &starting /*out*/, std::vector<int> &ending /*out*/)
+void getBoundaries(const Network &net, int direction, std::vector<int> &starting /*out*/, std::vector<int> &ending /*out*/, double coordScale)
 {
     starting.clear();
     ending.clear();
     std::vector<double> left_b(net.pores.size()), right_b(net.pores.size());
-    double min_b = net.pores[0][direction], max_b = net.pores[0][direction];
+    double min_b = net.pores[0][direction] * coordScale, max_b = net.pores[0][direction] * coordScale;
     for (int i = 0; i < net.pores.size(); i++)
     {
-        min_b = std::min(min_b, net.pores[i][direction]);
-        max_b = std::max(max_b, net.pores[i][direction]);
-        left_b[i] = net.pores[i][direction] - net.pores[i].r;
-        right_b[i] = net.pores[i][direction] + net.pores[i].r;
+        min_b = std::min(min_b, net.pores[i][direction] * coordScale);
+        max_b = std::max(max_b, net.pores[i][direction] * coordScale);
+        left_b[i] = net.pores[i][direction] * coordScale - net.pores[i].r;
+        right_b[i] = net.pores[i][direction] * coordScale + net.pores[i].r;
     }
+    if (DEBUG) printf("min = %.7lf, max = %.7lf\n", min_b, max_b);
     for (int i = 0; i < net.pores.size(); i++)
     {
         if (left_b[i] <= min_b)
         {
+            if (DEBUG) printf("pore %d: left = %.7lf - %.7lf = %.7lf\n", i, net.pores[i][direction], net.pores[i].r, left_b[i]);
             starting.push_back(i);
         }
         if (right_b[i] >= max_b)
         {
+            if (DEBUG) printf("pore %d: right = %.7lf + %.7lf = %.7lf\n", i, net.pores[i][direction], net.pores[i].r, right_b[i]);
             ending.push_back(i);
         }
     }
+    printf("Left boundary has %d pores\n", (int)starting.size());
+    printf("Right boundary has %d pores\n", (int)ending.size());
 }
 
 typedef std::pair<int, int> Edge;
