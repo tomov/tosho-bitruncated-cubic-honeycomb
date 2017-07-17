@@ -4,6 +4,8 @@
 #    if # of fits > 1, each output is named [output file].X, where X = the index of the fit
 #
 # Ex: python fit_dist.py dist/SST1-topology-N_20.csv dist/SST1-PR_distribution-1x49.csv dist/SST1-THR_distribution-1x41.csv dist/SST1-CN_vs_PR-15x49.csv dist/SST1-PR_vs_TH-49x49x41.csv 3 1 fits/SST1.fit.csv
+#
+# Ex: python fit_dist.py SST1-topologies dist/SST1-PR_distribution-1x49.csv dist/SST1-THR_distribution-1x41.csv dist/SST1-CN_vs_PR-15x49.csv dist/SST1-PR_vs_TH-49x49x41.csv 3 1 SST1-fits
 
 # Usage for directories:
 # python fit_dist.py [input dir] [bin size] [# of fits] [output dir]
@@ -225,23 +227,20 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
 
 if __name__ == '__main__':
     infile = sys.argv[1]
+    PR_file = sys.argv[2]
+    THR_file = sys.argv[3]
+    CN_vs_PR_file = sys.argv[4]
+    PR_vs_TH_file = sys.argv[5]
+    bin_size = int(sys.argv[6])
+    n_fits = int(sys.argv[7])
+    outfile = sys.argv[8]
 
     if infile.lower().endswith('.csv'):
-        PR_file = sys.argv[2]
-        THR_file = sys.argv[3]
-        CN_vs_PR_file = sys.argv[4]
-        PR_vs_TH_file = sys.argv[5]
-        bin_size = int(sys.argv[6])
-        n_fits = int(sys.argv[7])
-        outfile = sys.argv[8]
-
         solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_fits, outfile)
 
     else:
-        indir = sys.argv[1]
-        bin_size = int(sys.argv[2])
-        n_fits = int(sys.argv[3])
-        outdir = sys.argv[4]
+        indir = infile
+        outdir = outfile
 
         all_files = []
         for (path, dirs, files) in os.walk(indir):
@@ -250,34 +249,7 @@ if __name__ == '__main__':
                 if filename.lower().endswith('.csv'):
                     all_files.append((path, filename))
 
-        inputs = dict()
-        for f in all_files:
-            what = None
-            parts = f[1].split('-')
-
-            if 'topology' in parts:
-                name = parts[parts.index('topology') - 1]
-                what = 'infile'
-            if 'PR_distribution' in parts:
-                name = parts[parts.index('PR_distribution') - 1]
-                what = 'PR_file'
-            if 'THR_distribution' in parts:
-                name = parts[parts.index('THR_distribution') - 1]
-                what = 'THR_file'
-            if 'CN_vs_PR' in parts:
-                name = parts[parts.index('CN_vs_PR') - 1]
-                what = 'CN_vs_PR_file'
-            if 'PR_vs_TH' in parts:
-                name = parts[parts.index('PR_vs_TH') - 1]
-                what = 'PR_vs_TH_file'
-
-            print f[1], ': ', name, ' ', what
-            if name not in inputs:
-                inputs[name] = dict()
-            inputs[name][what] = os.path.join(f[0], f[1])
-
-        for name, ins in inputs.iteritems():
-            if len(ins) != 5:
-                continue
-            outfile = os.path.join(outdir, name + '.fit.csv')
-            solve(ins['infile'], ins['PR_file'], ins['THR_file'], ins['CN_vs_PR_file'], ins['PR_vs_TH_file'], bin_size, n_fits, outfile)
+        for path, filename in all_files:
+            infile = os.path.join(path, filename)
+            outfile = os.path.join(outdir, filename[:-4] + '.fit.csv')
+            solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_fits, outfile)
