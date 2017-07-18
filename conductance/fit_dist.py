@@ -243,7 +243,7 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
         if n_fits == 1:
             fit_outfile = outfile
         else:
-            fit_outfile = outfile + "." + str(fit)
+            fit_outfile = outfile[:-4] + "." + str(fit) + ".csv"
         writeCSV(pores, throats, left, right, ucs, n, permeability, fit_outfile)
 
 
