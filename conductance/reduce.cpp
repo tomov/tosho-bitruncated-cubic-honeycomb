@@ -84,7 +84,7 @@ void solve(const char* infile, const char* cnfile, const char* outfile, double f
 
             // Once we reach the # of critical features in either direction, give it one more iteration
             //
-            if (criticalThroats[direction].size() < ct[direction] || criticalPores[direction].size() < cp[direction])
+            if (criticalThroats[direction].size() <= ct[direction] || criticalPores[direction].size() <= cp[direction])
             {
                 if (remaining > terminal)
                 {
