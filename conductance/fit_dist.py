@@ -3,7 +3,7 @@
 #    bin size is for grouping the pore sizes in PR_vs_TH
 #    if # of fits > 1, each output is named [output file].X, where X = the index of the fit
 #
-# Ex: python fit_dist.py dist/SST1-topology-N_20.csv dist/SST1-PR_distribution-1x49.csv dist/SST1-THR_distribution-1x41.csv dist/SST1-CN_vs_PR-15x49.csv dist/SST1-PR_vs_TH-49x49x41.csv 3 1 fits/SST1.fit.csv
+# Ex: python fit_dist.py top/SST1-topology-N_20.csv dist/SST1-PR_distribution-1x49.csv dist/SST1-THR_distribution-1x41.csv dist/SST1-CN_vs_PR-15x49.csv dist/SST1-PR_vs_TH-49x49x41.csv 3 1 fits/SST1.fit.csv
 #
 # Ex: python fit_dist.py SST1-topologies dist/SST1-PR_distribution-1x49.csv dist/SST1-THR_distribution-1x41.csv dist/SST1-CN_vs_PR-15x49.csv dist/SST1-PR_vs_TH-49x49x41.csv 3 1 SST1-fits
 # Ex: python fit_dist.py SST1-topologies dist/SST1-PR_distribution-1x49.csv dist/SST1-THR_distribution-1x41.csv dist/SST1-CN_vs_PR-15x49.csv dist/SST1-PR_vs_TH-49x49x41.csv 1 1 SST1-fits
@@ -186,9 +186,9 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
 
             new_r = -1 # throat radius
             x = random.random()
-            for j in range(len(pr)):
+            for j in range(len(thr)):
                 if x < dist[j]:
-                    new_r = pr[j]
+                    new_r = thr[j]
                     break
                 x -= dist[j]
             assert new_r != -1
