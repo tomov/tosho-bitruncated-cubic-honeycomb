@@ -107,6 +107,17 @@ def read_PR_vs_TH_file(filename):
     return pr_pr_th, pr_th
 
 
+def sample(dist):
+    assert abs(sum(dist) - 1) < 1e-4
+    while True:
+        x = random.random()
+        for j in range(len(dist)):
+            if x < dist[j]:
+                return j
+            x -= dist[j]
+
+    lksdjflksjf
+
 
 def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_fits, outfile):
     print '\n\n ======================= solving for ', infile, ' ================\n\n'
@@ -141,14 +152,8 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
 
         for i in range(len(pores)):
             dist = cn_pr[cns[i]] # pore radius distribution
-            new_r = -1 # pore radius
-            while new_r == -1:
-                x = random.random()
-                for j in range(len(pr)):
-                    if x < dist[j]:
-                        new_r = pr[j]
-                        break
-                    x -= dist[j]
+            assert len(dist) == len(pr)
+            new_r = pr[sample(dist)]
             pores[i] = (pores[i][0], pores[i][1], pores[i][2], new_r)
 
         # sanity check -- should be same as CN_vs_PR
@@ -184,7 +189,9 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
                 else:
                     single_prs += 1
 
-            new_r = -1 # throat radius
+            assert len(dist) == len(thr)
+            #new_r = thr[sample(dist)] # throat radius
+            new_r = -1
             x = random.random()
             for j in range(len(thr)):
                 if x < dist[j]:
