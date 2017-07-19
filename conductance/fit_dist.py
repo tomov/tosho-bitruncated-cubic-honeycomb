@@ -31,7 +31,7 @@ from conductance import readCSV, writeCSV
 
 bin_size = 3
 
-DO_PRINT = False
+DO_PRINT = False 
 
 def read_PR_file(filename):
     rs = []
@@ -115,6 +115,15 @@ def sample(dist):
             if x < dist[j]:
                 return j
             x -= dist[j]
+    assert False
+
+
+def draw(hist): # pass by reference! modifies hist in place
+    for j in range(len(hist)):
+        if hist[j] > 0:
+            hist[j] -= 1
+            return j
+    return None 
 
 
 def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_fits, outfile):
@@ -148,12 +157,14 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
             cns[throat[0]] += 1
             cns[throat[1]] += 1
 
-        # build histogram and assign from there
+        # build histogram and draw from there
         #
         cn_pr_hist = []
         for i in range(len(cn_pr)):
             cnt = sum([1 for x in cns if x == i])
             cn_pr_hist.append([int(x * cnt) for x in cn_pr[i]])
+            if DO_PRINT:
+                print 'for cn ', i, ' (', cnt, '): ', cn_pr[i]
 
         # assign pore radii in random order
         #
@@ -162,15 +173,12 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
 
         randoms = 0
         for i in idxs:
-            cn = cns[i]
-            new_r = -1
-            for j in range(len(cn_pr_hist[cn])):
-                if cn_pr_hist[cn][j] > 0:
-                    new_r = pr[j]
-                    cn_pr_hist[cn][j] -= 1
-                    break
+            cn = cns[i]        
 
-            if new_r == -1: # out of pore radii to give away
+            _ = draw(cn_pr_hist[cn]) # crucial to pass by reference!
+            if _ is not None:
+                new_r = pr[_]
+            else: # out of pore radii to give away
                 randoms += 1
                 dist = cn_pr[cn]
                 new_r = pr[sample(dist)]
@@ -192,10 +200,12 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
                 cn_pr_sanity[cn] = [float(x) / s for x in cn_pr_sanity[cn]]
                 print cn, ': ', ','.join(["%.3f" % x for x in cn_pr_sanity[cn]])
 
-        # Assign throat radii
+        # Assign throat radii according to PR_vs_TH
         #
-        generics = 0
-        single_prs = 0
+
+        # get scaling factors (throat counts for pairs of pore radii)
+        #
+        cnts = dict()
         for i in range(len(throats)):
             p1 = throats[i][0]
             p2 = throats[i][1]
@@ -203,29 +213,55 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
             pr2 = pores[p2][3]
             key = (int(pr1 * 1e6) / bin_size, int(pr2 * 1e6) / bin_size)
 
-            dist = pr_pr_th[key] # throat radius distribution
-            if abs(sum(dist)) < 1e-4:
-                dist = pr_th[int((pr1 + pr2) / 2 * 1e6) / bin_size]
-                if abs(sum(dist)) < 1e-4:
-                    dist = thr_dist
-                    generics += 1
-                else:
-                    single_prs += 1
+            if key not in cnts:
+                cnts[key] = 0
+            cnts[key] += 1
 
-            assert len(dist) == len(thr)
-            #new_r = thr[sample(dist)] # throat radius
-            new_r = -1
-            x = random.random()
-            for j in range(len(thr)):
-                if x < dist[j]:
-                    new_r = thr[j]
-                    break
-                x -= dist[j]
-            assert new_r != -1
+        # build histogram and draw from there
+        #
+        pr_pr_th_hist = dict()
+        for key, hist in pr_pr_th.iteritems():
+            cnt = cnts[key] if key in cnts else 0
+            pr_pr_th_hist[key] = [int(x * cnt) for x in hist]
+            if DO_PRINT:
+                print 'for throat pr-pr ', key, ' (', cnt, '): ', pr_pr_th_hist[key]
+
+        # assign throat radii in random order
+        #
+        idxs = range(len(throats))
+        random.shuffle(idxs)
+
+        generics = 0
+        single_prs = 0
+        randoms = 0
+        for i in idxs:
+            p1 = throats[i][0]
+            p2 = throats[i][1]
+            pr1 = pores[p1][3]
+            pr2 = pores[p2][3]
+            key = (int(pr1 * 1e6) / bin_size, int(pr2 * 1e6) / bin_size)
+
+            _ = draw(pr_pr_th_hist[key]) # crucial to pass by reference!
+            if _ is not None:
+                new_r = thr[_]
+            else: # out of throat radii to give away
+                randoms += 1
+
+                dist = pr_pr_th[key] # throat radius distribution
+                if abs(sum(dist)) < 1e-4:
+                    dist = pr_th[int((pr1 + pr2) / 2 * 1e6) / bin_size]
+                    if abs(sum(dist)) < 1e-4:
+                        dist = thr_dist
+                        generics += 1
+                    else:
+                        single_prs += 1
+
+                assert len(dist) == len(thr)
+                new_r = thr[sample(dist)] # throat radius
 
             throats[i] = (throats[i][0], throats[i][1], new_r)
 
-        print 'Used single-PR distirbution for %d and prior distribution for %d out of %d throats' % (single_prs, generics, len(throats))
+        print 'Assigned %d out of %d throat radii randomly; out of these, used single-PR distirbution for %d and prior distribution for %d' % (randoms, len(throats), single_prs, generics)
 
         #
         # get stats for plotting
