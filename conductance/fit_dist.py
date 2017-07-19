@@ -33,6 +33,9 @@ bin_size = 3
 
 DO_PRINT = False 
 
+one_pr_per_th = True
+
+
 def read_PR_file(filename):
     rs = []
     dist = []
@@ -125,6 +128,14 @@ def draw(hist): # pass by reference! modifies hist in place
             return j
     return None 
 
+def draw2(hist1, hist2): # pass by reference! modifies hist in place
+    assert len(hist1) == len(hist2)
+    for j in range(len(hist1)):
+        if hist1[j] > 0 and hist2[j] > 0:
+            hist1[j] -= 1
+            hist2[j] -= 1
+            return j
+    return None 
 
 def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_fits, outfile):
     print '\n\n ======================= solving for ', infile, ' ================\n\n'
@@ -200,127 +211,147 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
                 cn_pr_sanity[cn] = [float(x) / s for x in cn_pr_sanity[cn]]
                 print cn, ': ', ','.join(["%.3f" % x for x in cn_pr_sanity[cn]])
 
+        # Build histogram for throat radii
+        #
+        thr_hist = [int(x * len(throats)) for x in thr_dist]
+
         # Assign throat radii according to PR_vs_TH
         #
+        if not one_pr_per_th:
 
-#        # get scaling factors (throat counts for pairs of pore radii)
-#        #
-#        cnts = dict()
-#        for i in range(len(throats)):
-#            p1 = throats[i][0]
-#            p2 = throats[i][1]
-#            pr1 = pores[p1][3]
-#            pr2 = pores[p2][3]
-#            key = (int(pr1 * 1e6) / bin_size, int(pr2 * 1e6) / bin_size)
-#
-#            if key not in cnts:
-#                cnts[key] = 0
-#            cnts[key] += 1
-#
-#        # build histogram and draw from there
-#        #
-#        pr_pr_th_hist = dict()
-#        for key, hist in pr_pr_th.iteritems():
-#            cnt = cnts[key] if key in cnts else 0
-#            pr_pr_th_hist[key] = [int(x * cnt) for x in hist]
-#            if DO_PRINT:
-#                print 'for throat pr-pr ', key, ' (', cnt, '): ', pr_pr_th_hist[key]
-#
-#        # assign throat radii in random order
-#        #
-#        idxs = range(len(throats))
-#        random.shuffle(idxs)
-#
-#        generics = 0
-#        single_prs = 0
-#        randoms = 0
-#        for i in idxs:
-#            p1 = throats[i][0]
-#            p2 = throats[i][1]
-#            pr1 = pores[p1][3]
-#            pr2 = pores[p2][3]
-#            key = (int(pr1 * 1e6) / bin_size, int(pr2 * 1e6) / bin_size)
-#
-#            _ = draw(pr_pr_th_hist[key]) # crucial to pass by reference!
-#            if _ is not None:
-#                new_r = thr[_]
-#            else: # out of throat radii to give away
-#                randoms += 1
-#
-#                dist = pr_pr_th[key] # throat radius distribution
-#                if abs(sum(dist)) < 1e-4:
-#                    dist = pr_th[int((pr1 + pr2) / 2 * 1e6) / bin_size]
-#                    if abs(sum(dist)) < 1e-4:
-#                        dist = thr_dist
-#                        generics += 1
-#                    else:
-#                        single_prs += 1
-#
-#                assert len(dist) == len(thr)
-#                new_r = thr[sample(dist)] # throat radius
-#
-#            throats[i] = (throats[i][0], throats[i][1], new_r)
-#
-#        print 'Assigned %d out of %d throat radii randomly; out of these, used single-PR distirbution for %d and prior distribution for %d' % (randoms, len(throats), single_prs, generics)
+            # get scaling factors (throat counts for pairs of pore radii)
+            #
+            cnts = dict()
+            for i in range(len(throats)):
+                p1 = throats[i][0]
+                p2 = throats[i][1]
+                pr1 = pores[p1][3]
+                pr2 = pores[p2][3]
+                key = (int(pr1 * 1e6) / bin_size, int(pr2 * 1e6) / bin_size)
+    
+                if key not in cnts:
+                    cnts[key] = 0
+                cnts[key] += 1
+    
+            # build histogram and draw from there
+            #
+            pr_pr_th_hist = dict()
+            for key, hist in pr_pr_th.iteritems():
+                cnt = cnts[key] if key in cnts else 0
+                pr_pr_th_hist[key] = [int(x * cnt) for x in hist]
+                if DO_PRINT:
+                    print 'for throat pr-pr ', key, ' (', cnt, '): ', pr_pr_th_hist[key]
+    
+            # assign throat radii in random order
+            #
+            idxs = range(len(throats))
+            random.shuffle(idxs)
+    
+            generics = 0
+            single_prs = 0
+            randoms = 0
+            generic_hists = 0
+            for i in idxs:
+                p1 = throats[i][0]
+                p2 = throats[i][1]
+                pr1 = pores[p1][3]
+                pr2 = pores[p2][3]
+                key = (int(pr1 * 1e6) / bin_size, int(pr2 * 1e6) / bin_size)
+    
+                #_ = draw(pr_pr_th_hist[key]) # crucial to pass by reference!
+                _ = draw2(pr_pr_th_hist[key], thr_hist) # crucial to pass by reference!
+                #_ = draw(thr_hist) # sanity
+                if _ is not None:
+                    new_r = thr[_]
+                else: # out of throat radii to give away
+                    _ = draw(thr_hist)
+                    if _ is not None:
+                        new_r = thr[_]
+                        generic_hists += 1
+                    else:
+                        randoms += 1
+                        dist = pr_pr_th[key] # throat radius distribution
+                        if abs(sum(dist)) < 1e-4:
+                            dist = pr_th[int((pr1 + pr2) / 2 * 1e6) / bin_size]
+                            if abs(sum(dist)) < 1e-4:
+                                dist = thr_dist
+                                generics += 1
+                            else:
+                                single_prs += 1
+        
+                        assert len(dist) == len(thr)
+                        new_r = thr[sample(dist)] # throat radius
+    
+                throats[i] = (throats[i][0], throats[i][1], new_r)
+    
+            print 'Out of %d throat radii, assigned %d from generic histogram and %d randomly; out of the random ones, used single-PR distirbution for %d and prior distribution for %d' % (len(throats), generic_hists, randoms, single_prs, generics)
 
 
+        else:
 
-        # get scaling factors (throat counts for pairs of pore radii)
-        #
-        cnts = dict()
-        for i in range(len(throats)):
-            p1 = throats[i][0]
-            p2 = throats[i][1]
-            pr1 = pores[p1][3]
-            pr2 = pores[p2][3]
-            key = int((pr1 + pr2) / 2 * 1e6) / bin_size
+            # get scaling factors (throat counts for pairs of pore radii)
+            #
+            cnts = dict()
+            for i in range(len(throats)):
+                p1 = throats[i][0]
+                p2 = throats[i][1]
+                pr1 = pores[p1][3]
+                pr2 = pores[p2][3]
+                key = int((pr1 + pr2) / 2 * 1e6) / bin_size
 
-            if key not in cnts:
-                cnts[key] = 0
-            cnts[key] += 1
+                if key not in cnts:
+                    cnts[key] = 0
+                cnts[key] += 1
 
-        # build histogram and draw from there
-        #
-        pr_th_hist = dict()
-        for key, hist in pr_th.iteritems():
-            cnt = cnts[key] if key in cnts else 0
-            pr_th_hist[key] = [int(x * cnt) for x in hist]
-            if DO_PRINT:
-                print 'for throat pr ', key, ' (', cnt, '): ', pr_th_hist[key]
+            # build histogram and draw from there
+            #
+            pr_th_hist = dict()
+            for key, hist in pr_th.iteritems():
+                cnt = cnts[key] if key in cnts else 0
+                pr_th_hist[key] = [int(x * cnt) for x in hist]
+                if DO_PRINT:
+                    print 'for throat pr ', key, ' (', cnt, '): ', pr_th_hist[key]
 
-        # assign throat radii in random order
-        #
-        idxs = range(len(throats))
-        random.shuffle(idxs)
+            # assign throat radii in random order
+            #
+            idxs = range(len(throats))
+            random.shuffle(idxs)
 
-        generics = 0
-        randoms = 0
-        for i in idxs:
-            p1 = throats[i][0]
-            p2 = throats[i][1]
-            pr1 = pores[p1][3]
-            pr2 = pores[p2][3]
-            key = int((pr1 + pr2) / 2 * 1e6) / bin_size
+            generics = 0
+            randoms = 0
+            generic_hists = 0
+            for i in idxs:
+                p1 = throats[i][0]
+                p2 = throats[i][1]
+                pr1 = pores[p1][3]
+                pr2 = pores[p2][3]
+                key = int((pr1 + pr2) / 2 * 1e6) / bin_size
 
-            _ = draw(pr_th_hist[key]) # crucial to pass by reference!
-            _ = None
-            if _ is not None:
-                new_r = thr[_]
-            else: # out of throat radii to give away
-                randoms += 1
+                #_ = draw(pr_th_hist[key]) # crucial to pass by reference!
+                _ = draw2(pr_th_hist[key], thr_hist) # crucial to pass by reference!
+                #_ = draw(thr_hist) # sanity
+                if _ is not None:
+                    new_r = thr[_]
+                else: # out of throat radii to give away
+                    _ = draw(thr_hist)
+                    if _ is not None:
+                        new_r = thr[_]
+                        generic_hists += 1
+                    else:
+                        randoms += 1
+                        dist = pr_th[key] # throat radius distribution
+                        if abs(sum(dist)) < 1e-4:
+                            dist = thr_dist
+                            generics += 1
 
-                dist = pr_th[key] # throat radius distribution
-                if abs(sum(dist)) < 1e-4:
-                    dist = thr_dist
-                    generics += 1
+                        assert len(dist) == len(thr)
+                        new_r = thr[sample(dist)] # throat radius
 
-                assert len(dist) == len(thr)
-                new_r = thr[sample(dist)] # throat radius
+                throats[i] = (throats[i][0], throats[i][1], new_r)
 
-            throats[i] = (throats[i][0], throats[i][1], new_r)
+            print 'Out of %d throat radii, assigned %d from generic histogram and %d randomly; out of these, used prior distribution for %d' % (len(throats), generic_hists, randoms, generics)
 
-        print 'Assigned %d out of %d throat radii randomly; out of these, used prior distribution for %d' % (randoms, len(throats), generics)
-
+        print thr_hist
 
 
         #
