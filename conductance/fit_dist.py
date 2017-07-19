@@ -33,7 +33,7 @@ bin_size = 3
 
 DO_PRINT = False 
 
-one_pr_per_th = True
+one_pr_per_th = False
 
 
 def read_PR_file(filename):
@@ -350,8 +350,6 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
                 throats[i] = (throats[i][0], throats[i][1], new_r)
 
             print 'Out of %d throat radii, assigned %d from generic histogram and %d randomly; out of these, used prior distribution for %d' % (len(throats), generic_hists, randoms, generics)
-
-        print thr_hist
 
 
         #
