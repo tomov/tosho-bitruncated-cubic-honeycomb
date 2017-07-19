@@ -116,8 +116,6 @@ def sample(dist):
                 return j
             x -= dist[j]
 
-    lksdjflksjf
-
 
 def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_fits, outfile):
     print '\n\n ======================= solving for ', infile, ' ================\n\n'
@@ -150,11 +148,36 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
             cns[throat[0]] += 1
             cns[throat[1]] += 1
 
-        for i in range(len(pores)):
-            dist = cn_pr[cns[i]] # pore radius distribution
-            assert len(dist) == len(pr)
-            new_r = pr[sample(dist)]
+        # build histogram and assign from there
+        #
+        cn_pr_hist = []
+        for i in range(len(cn_pr)):
+            cnt = sum([1 for x in cns if x == i])
+            cn_pr_hist.append([int(x * cnt) for x in cn_pr[i]])
+
+        # assign pore radii in random order
+        #
+        idxs = range(len(pores))
+        random.shuffle(idxs)
+
+        randoms = 0
+        for i in idxs:
+            cn = cns[i]
+            new_r = -1
+            for j in range(len(cn_pr_hist[cn])):
+                if cn_pr_hist[cn][j] > 0:
+                    new_r = pr[j]
+                    cn_pr_hist[cn][j] -= 1
+                    break
+
+            if new_r == -1: # out of pore radii to give away
+                randoms += 1
+                dist = cn_pr[cn]
+                new_r = pr[sample(dist)]
+
             pores[i] = (pores[i][0], pores[i][1], pores[i][2], new_r)
+
+        print 'Assigned', randoms, 'out of', len(pores), 'pore radii randomly'
 
         # sanity check -- should be same as CN_vs_PR
         #
