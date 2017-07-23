@@ -633,9 +633,10 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
     // Only if we actually have net more CPs
     //
     std::vector<bool> removed(net.pores.size());
-    if (std::accumulate(hist.begin(), hist.end(), 0) > std::accumulate(target.begin(), target.end(), 0))
+    int target_sum = std::accumulate(target.begin(), target.end(), 0); // = target # of critical pores
+    if (std::accumulate(hist.begin(), hist.end(), 0) > target_sum) // if we have more CPs than we need
     {
-        for (int cn = 0; cn <= MAX_CN; cn++)
+        for (int cn = 0; cn <= MAX_CN; cn++) // for each coordination number, remove prob fraction of the CPs
         {
             int to_remove = hist[cn] - target[cn];
             if (to_remove <= 0)
@@ -650,7 +651,14 @@ Network fitCriticalPoreCNs(const Network &net, const std::vector<int> &left, con
             for (int i = 0; i < to_remove; i++)
             {
                 int p = temp[i];
-                removed[p] = unif_rand() < prob;
+                if (target_sum == 0) // special case -- if we want to get rid of ALL CPs in that direction, remove all of them at once
+                {
+                    removed[p] = true;
+                }
+                else
+                {
+                    removed[p] = unif_rand() < prob; // else, remove stochastically -- remove prob of them only
+                }
                 if (DEBUG) std::cout<<" remove "<<p<<" (cn = "<<cns[p]<<"); really? "<<removed[p]<<"\n";
             }
         }
