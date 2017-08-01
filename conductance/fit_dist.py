@@ -36,7 +36,7 @@ DO_PRINT = False
 one_pr_per_th = False
 
 
-def read_PR_file(filename):
+def read_PR_file(filename): # each col = PR, cell entry = Prob[PR], PR = col index * 1e-6
     rs = []
     dist = []
     with open(filename, 'r') as f:
@@ -50,10 +50,10 @@ def read_PR_file(filename):
         assert abs(1 - sum(dist)) < 1e-4
     return rs, dist
 
-def read_THR_file(filename):
+def read_THR_file(filename): # each col = THR, cell entry = Prob[THR], THR = col index * 1e-6
     return read_PR_file(filename)
 
-def read_CN_vs_PR_file(filename):
+def read_CN_vs_PR_file(filename): # each row = CN, each col = PR, cell entry = Prob[PR | CN]
     cn_pr = dict()
     with open(filename, 'r') as f:
         cn = 0
@@ -65,7 +65,7 @@ def read_CN_vs_PR_file(filename):
             cn += 1
     return cn_pr
 
-def read_PR_vs_TH_file(filename):
+def read_PR_vs_TH_file(filename): # each row starts with (PR1, PR2) pair, then each col = THR, cell entry = Prob[THR | PR1, PR2]; we also compute Prob[THR | PR1]
     pr_pr_th = dict()
     pr_th = dict()
     with open(filename, 'r') as f:
@@ -161,8 +161,10 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
         assert len(pr_pr_th) == (len(pr) / bin_size + (bin_size != 1))**2
         assert len(pr_pr_th[(1, 1)]) == len(thr)
 
+        #
         # Assign pore radii according to CN_vs_PR
         #
+
         cns = [0] * len(pores)
         for throat in throats:
             cns[throat[0]] += 1
@@ -205,7 +207,7 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
             for cn in range(15):
                 cn_pr_sanity[cn] = [0] * len(pr)
             for i in range(len(pores)):
-                cn_pr_sanity[cns[i]][int(pores[i][3] * 1e6) - 1] += 1
+                cn_pr_sanity[cns[i]][int(round(pores[i][3] * 1e6)) - 1] += 1
             for cn in range(15):
                 s = sum(cn_pr_sanity[cn])
                 cn_pr_sanity[cn] = [float(x) / s for x in cn_pr_sanity[cn]]
@@ -227,7 +229,7 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
                 p2 = throats[i][1]
                 pr1 = pores[p1][3]
                 pr2 = pores[p2][3]
-                key = (int(pr1 * 1e6) / bin_size, int(pr2 * 1e6) / bin_size)
+                key = (int(round(pr1 * 1e6)) / bin_size, int(round(pr2 * 1e6)) / bin_size)
     
                 if key not in cnts:
                     cnts[key] = 0
@@ -256,7 +258,7 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
                 p2 = throats[i][1]
                 pr1 = pores[p1][3]
                 pr2 = pores[p2][3]
-                key = (int(pr1 * 1e6) / bin_size, int(pr2 * 1e6) / bin_size)
+                key = (int(round(pr1 * 1e6)) / bin_size, int(round(pr2 * 1e6)) / bin_size)
     
                 #_ = draw(pr_pr_th_hist[key]) # crucial to pass by reference!
                 _ = draw2(pr_pr_th_hist[key], thr_hist) # crucial to pass by reference!
@@ -272,7 +274,7 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
                         randoms += 1
                         dist = pr_pr_th[key] # throat radius distribution
                         if abs(sum(dist)) < 1e-4:
-                            dist = pr_th[int((pr1 + pr2) / 2 * 1e6) / bin_size]
+                            dist = pr_th[int(round((pr1 + pr2) / 2 * 1e6)) / bin_size]
                             if abs(sum(dist)) < 1e-4:
                                 dist = thr_dist
                                 generics += 1
@@ -297,7 +299,7 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
                 p2 = throats[i][1]
                 pr1 = pores[p1][3]
                 pr2 = pores[p2][3]
-                key = int((pr1 + pr2) / 2 * 1e6) / bin_size
+                key = int(round((pr1 + pr2) / 2 * 1e6)) / bin_size
 
                 if key not in cnts:
                     cnts[key] = 0
@@ -325,7 +327,7 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
                 p2 = throats[i][1]
                 pr1 = pores[p1][3]
                 pr2 = pores[p2][3]
-                key = int((pr1 + pr2) / 2 * 1e6) / bin_size
+                key = int(round((pr1 + pr2) / 2 * 1e6)) / bin_size
 
                 #_ = draw(pr_th_hist[key]) # crucial to pass by reference!
                 _ = draw2(pr_th_hist[key], thr_hist) # crucial to pass by reference!
@@ -359,11 +361,13 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
         # Plot #1: Average pore radius vs coordination number
         #
         avg_pr_vs_cn_plot = []
+        radii_hist = [0] * (len(pr_dist) + 1)
         for cn in range(15):
             radii = []
             for i in range(len(pores)):
                 if cns[i] == cn:
                     radii.append(pores[i][3])
+                    radii_hist[int(round(pores[i][3] * 1e6))] += 1
             avg_pr_vs_cn_plot.append(np.mean(radii))
         print '\n\nfigure;'
         print 'x = [', ' '.join(str(x) for x in range(15)), '];'
@@ -400,6 +404,18 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
         else:
             fit_outfile = outfile[:-4] + "." + str(fit) + ".csv"
         writeCSV(pores, throats, left, right, ucs, n, permeability, fit_outfile)
+
+        # Plot #3: Pore radius distribution
+        #
+        radii_dist = radii_hist;
+        for i in range(len(radii_dist)):
+            radii_dist[i] = float(radii_hist[i]) / len(pores)
+        print '\n\nfigure;'
+        print 'x = [', ' '.join(str(x) for x in radii_dist[1:]), '];' # actual distribution of pore radii
+        print 'y = [', ' '.join(str(x) for x in pr_dist), '];' # goal distribution of pore radii
+        print "bar([x' y']);"
+        print "title('Pore radii distribution');"
+        print "legend({'Actual', 'Target'});"
 
 
 if __name__ == '__main__':

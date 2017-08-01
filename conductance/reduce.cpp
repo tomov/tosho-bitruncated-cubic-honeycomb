@@ -126,6 +126,7 @@ int main(int argc, char* argv[])
         std::vector<std::string> infiles = ls_csv(indir);
         for (auto infile : infiles)
         {
+            printf("main loop at file %s\n", infile.c_str());
             std::size_t slash = infile.find_last_of("/\\");
             std::string infilename;
             if (slash == std::string::npos)
@@ -136,8 +137,10 @@ int main(int argc, char* argv[])
             {
                 infilename = infile.substr(slash + 1);
             }
+            printf("main loop truncated filename to %s\n", infilename.c_str());
 
             std::string outfile = (std::string)(outdir) + "/" + infilename.substr(0, infilename.length() - 4) + ".reduced.csv";
+            printf("main loop outfile %s\n", outfile.c_str());
 
             solve(infile.c_str(), cnfile, outfile.c_str(), frac, terminal, coordScale);
         }
