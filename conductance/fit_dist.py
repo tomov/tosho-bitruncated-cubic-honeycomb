@@ -170,7 +170,11 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
             cns[throat[0]] += 1
             cns[throat[1]] += 1
 
-        # build histogram and draw from there
+        # Build histogram for pore radii
+        #
+        pr_hist = [int(x * len(pores)) for x in pr_dist]
+
+        # build histogram for pore radii given coordination number, and draw from there
         #
         cn_pr_hist = []
         for i in range(len(cn_pr)):
@@ -185,20 +189,27 @@ def solve(infile, PR_file, THR_file, CN_vs_PR_file, PR_vs_TH_file, bin_size, n_f
         random.shuffle(idxs)
 
         randoms = 0
+        generic_hists = 0
         for i in idxs:
             cn = cns[i]        
 
-            _ = draw(cn_pr_hist[cn]) # crucial to pass by reference!
+            #_ = draw(cn_pr_hist[cn]) # crucial to pass by reference!
+            _ = draw2(cn_pr_hist[cn], pr_hist) # crucial to pass by reference!
             if _ is not None:
                 new_r = pr[_]
             else: # out of pore radii to give away
-                randoms += 1
-                dist = cn_pr[cn]
-                new_r = pr[sample(dist)]
+                _ = draw(pr_hist)
+                if _ is not None:
+                    new_r = pr[_]
+                    generic_hists += 1
+                else:
+                    randoms += 1
+                    dist = cn_pr[cn]
+                    new_r = pr[sample(dist)]
 
             pores[i] = (pores[i][0], pores[i][1], pores[i][2], new_r)
 
-        print 'Assigned', randoms, 'out of', len(pores), 'pore radii randomly'
+        print 'Out of %d pore radii, assigned %d from generic histogram and %d randomly' % (len(pores), generic_hists, randoms)
 
         # sanity check -- should be same as CN_vs_PR
         #
